@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-//#include <array>
+#include <array>
 
 #pragma once
 using namespace std;

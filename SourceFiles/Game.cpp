@@ -1,10 +1,8 @@
 //___Include Statements____________________________________________________________________________________________________
 #include "../HeaderFiles/Import.h"         // Contains all necessary imports for OpenGL
-//#include "../HeaderFiles/Tools.h"          // Some special helper functions
 
 
 //___Global Variables______________________________________________________________________________________________________
-
 //-_-_-_-_-_-_-_Camera/View Attributes_-_-_-_-_-_-_-_
 int azimuth = 0;                            // angle to x-axis
 int elevation = 0;                          // angle (up) to z-axis
@@ -13,6 +11,18 @@ unsigned short int view_mode = 0;           // 0 - orthogonal, 1 - perspective, 
 bool toggle_axes = true;
 double aspect_ratio = 1;                    // aspect ratio
 int field_of_view = 55;                     // field of view
+
+//-_-_-_-_-_-_-_Mesh Attributes_-_-_-_-_-_-_-_
+const float start_x = -1;
+const float start_y = -1;
+const float stretch_x = 2;
+const float stretch_y = 2;
+const float step_size = 0.1;
+const int num_x_vertices = (stretch_x/step_size) + 1;
+const int num_y_vertices = (stretch_y/step_size) + 1;
+const int dimensions = 3;
+const int data_length = num_x_vertices*num_y_vertices*dimensions;          // dimension of each vertice
+float mesh_data[data_length];
 
 //___Functions_____________________________________________________________________________________________________________
 
@@ -30,22 +40,38 @@ void PrintData(float data[], int data_length){
     }
 }
 
-void GenMeshVertices(float start_x, float start_y, float stretch_x, float stretch_y, float step_size){
-    int dimensions = 3;         // for now each vertex only tracks (x, y, z)
-    int num_x_vertices = (int)((stretch_x/step_size) + 1);
-    int num_y_vertices = (int)((stretch_y/step_size) + 1);
-    int data_length = num_x_vertices*num_y_vertices;       // num of vertices
-    data_length = data_length * dimensions;          // dimension of each vertice
-    float data[data_length];
-    //int indices[];
+void RenderMeshDemo(){
+    // Data now stored and ready, Render two different colored triangles for each square
+    for(int row = 0; row < (num_y_vertices - 1); row++){                // iterate through rows of y
+        int top_left_index = num_x_vertices * dimensions * (row+1);           //init top left/right starting indice
+        int top_right_index = top_left_index + dimensions;
+        for(int col = 0; col < (num_x_vertices -1); col++){     // for each row, iterate through columns of x
+            int curr = (col*dimensions) + (row*num_x_vertices*dimensions);
+            //cout << "curr: " << curr << endl;
+            // Bottom triangle (blue)
+            glBegin(GL_TRIANGLES);
+            glColor3f(0, 0, 0.5);           //blue
+            glVertex3f(mesh_data[curr],  mesh_data[curr+1],  mesh_data[curr+2]);
+            glVertex3f(mesh_data[curr+3],  mesh_data[curr+4],  mesh_data[curr+5]);
+            glVertex3f(mesh_data[top_right_index],  mesh_data[top_right_index+1],  mesh_data[top_right_index+2]);
+            glEnd();
 
-    // store 4 points which will be rendered in mesh map as 2 triangles
-    float temp_square[12] = {
-        start_x,            start_y,            0.0f,
-        start_x+step_size,  start_y,            0.0f,
-        start_x+step_size,  start_y+step_size,  0.0f,
-        start_x,            start_y+step_size,  0.0f
-    };
+            // Top triangle (red)
+            glBegin(GL_TRIANGLES);
+            glColor3f(0.5, 0, 0);           //red
+            glVertex3f(mesh_data[top_right_index],  mesh_data[top_right_index+1],  mesh_data[top_right_index+2]);
+            glVertex3f(mesh_data[top_left_index],  mesh_data[top_left_index+1],  mesh_data[top_left_index+2]);
+            glVertex3f(mesh_data[curr],  mesh_data[curr+1],  mesh_data[curr+2]);
+            glEnd();
+
+            top_left_index +=3;
+            top_right_index +=3;
+        }
+    }
+}
+
+void GenMeshVertices(){
+    //int indices[];
     //int temp_square_length = *(&temp_square + 1) - temp_square;
     //PrintVertices(temp_square, temp_square_length);
 
@@ -59,54 +85,15 @@ void GenMeshVertices(float start_x, float start_y, float stretch_x, float stretc
         //cout << "j: " << j << endl;
         for(int i = 0; i < num_x_vertices; i++){
             //cout << "i: " << i << "  ";
-            data[index] = x + i*step_size;      //x
+            mesh_data[index] = x + i*step_size;      //x
             index++;
-            data[index] = y + j*step_size;      //y
+            mesh_data[index] = y + j*step_size;      //y
             index++;
-            data[index] = z;      //z
+            mesh_data[index] = z;      //z
             index++;
         }
-    }
-    //cout << endl;
-    //PrintData(data, data_length);
-    int num_squares = (num_x_vertices-1)*(num_y_vertices-1);
-    // Data now stored and ready, Render two different colored triangles for each square
-    for(int row = 0; row < (num_y_vertices - 1); row++){                // iterate through rows of y
-        int top_left_index = num_x_vertices * dimensions * (row+1);           //init top left/right starting indice
-        int top_right_index = top_left_index + dimensions;
-        for(int col = 0; col < (num_x_vertices -1); col++){     // for each row, iterate through columns of x
-            int curr = (col*dimensions) + (row*num_x_vertices*dimensions);
-            //cout << "curr: " << curr << endl;
-            // Bottom triangle (blue)
-            glBegin(GL_TRIANGLES);
-            glColor3f(0, 0, 0.5);           //blue
-            glVertex3f(data[curr],  data[curr+1],  data[curr+2]);
-            glVertex3f(data[curr+3],  data[curr+4],  data[curr+5]);
-            glVertex3f(data[top_right_index],  data[top_right_index+1],  data[top_right_index+2]);
-            glEnd();
-
-            // Top triangle (red)
-            glBegin(GL_TRIANGLES);
-            glColor3f(0.5, 0, 0);           //red
-            glVertex3f(data[top_right_index],  data[top_right_index+1],  data[top_right_index+2]);
-            glVertex3f(data[top_left_index],  data[top_left_index+1],  data[top_left_index+2]);
-            glVertex3f(data[curr],  data[curr+1],  data[curr+2]);
-            glEnd();
-
-            top_left_index +=3;
-            top_right_index +=3;
-        }
-    }
-
-
-
-
-
-
+    } 
 }
-
-
-
 
 void Display(){
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);       // Erase the window and the depth buffer
@@ -137,7 +124,7 @@ void Display(){
     // Draw Calls Here
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
-    GenMeshVertices(0, 0, 1, 1, 0.1);
+    RenderMeshDemo();
 
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -226,14 +213,15 @@ void Fatal(const char* error_message){
 void Init(){
     azimuth = 0;
     elevation = 0;
+    GenMeshVertices();
 }
 
 
 //___Main__________________________________________________________________________________________________________________
 
 int main() {
-    Init();         // initialize
 
+    Init();         // initialize
     // Set null arguments and initialize GLUT
     int arg_c = 0;
     char* arg_v[1] = {(char*)"Nothing"};

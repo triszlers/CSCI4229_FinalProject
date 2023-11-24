@@ -10,3 +10,6 @@ Running:
 * Examine methods of efficiency drawing, make the vertex data constant for specific object drawing (houses, roads, etc).
     * Expand vertice dimensions for texture/normal caculation
 * Get lighting effects working (a slow moving sun)
+
+## Description
+Import errors and varied use of global variables in main function hindered formal abstraction of functions... result is a large file application
