@@ -1,8 +1,8 @@
-//___Include Statements____________________________________________________________________________________________________
 #include "../HeaderFiles/Import.h"         // Contains all necessary imports for OpenGL
 
-
 //___Global Variables______________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
 //-_-_-_-_-_-_-_Camera/View Attributes_-_-_-_-_-_-_-_
 int azimuth = 0;                            // angle to x-axis
 int elevation = 0;                          // angle (up) to z-axis
@@ -12,19 +12,46 @@ bool toggle_axes = true;
 double aspect_ratio = 1;                    // aspect ratio
 int field_of_view = 55;                     // field of view
 
-//-_-_-_-_-_-_-_Mesh Attributes_-_-_-_-_-_-_-_
+//-_-_-_-_-_-_-_Light Attributes_-_-_-_-_-_-_-_-_-_-_
+int sun_on = 1;
+int sun_move = 1;                           // start with Idle function --> sun moving
+float sun_distance = 2.0f;
+int sun_increment = 10;
+int sun_emission = 0;                       // Emission intensity (%)
+int sun_ambient = 10;                       // Ambient intensity (%)
+int sun_diffuse = 50;                       // Diffuse intensity (%)
+int sun_specular = 0;                       // Specular intensity (%)
+int sun_shininess = 0;                      // Shininess (power of two)
+float sun_shiny = 1;                        // Shininess (value)
+float sun_azimuth = 90.0f;                       // Light azimuth
+float sun_elevation = 0.0f;                    // Elevation of light
+int smooth = 1;                             // toggles smooth or flat shading
+
+//-_-_-_-_-_-_-_Mesh Attributes_-_-_-_-_-_-_-_-_-_-_-
 const float start_x = -1;
 const float start_y = -1;
 const float stretch_x = 2;
 const float stretch_y = 2;
-const float step_size = 0.1;
+const float step_size = 0.05;
 const int num_x_vertices = (stretch_x/step_size) + 1;
 const int num_y_vertices = (stretch_y/step_size) + 1;
 const int dimensions = 3;
-const int data_length = num_x_vertices*num_y_vertices*dimensions;          // dimension of each vertice
-float mesh_data[data_length];
+const int mesh_positions_length = num_x_vertices*num_y_vertices*dimensions;             // dimension of each vertice
+float mesh_positions[mesh_positions_length];                                            // vertices store positions of triangle mesh
+const int num_triangles = (num_x_vertices-1)*(num_y_vertices-1)*2;
+//const int mesh_indices_length = num_triangles*3;                                        // 3 indices for each triangle
+//float mesh_indices[mesh_indices_length];                                                // stores indices of 
+const int mesh_normals_length = num_triangles*3;                                        // x, y, z for each triangle normal --> storing only 1 normal per triangle for low-poly terrain
+float mesh_normals[mesh_normals_length];                                                // 3d normals of each triangle
+
+//_________________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
+
 
 //___Functions_____________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
 
 // Generates Mesh vertices on the x-y plane at specified starting position
     //TODO: Generate Z vertices algorithmically -- for now they are zero
@@ -40,8 +67,54 @@ void PrintData(float data[], int data_length){
     }
 }
 
-void RenderMeshDemo(){
+//Store normals in same manner as they are rendered for ease of use
+void GenMeshNormals(){
     // Data now stored and ready, Render two different colored triangles for each square
+    int index = 0;
+    for(int row = 0; row < (num_y_vertices - 1); row++){                // iterate through rows of y
+        int top_left_index = num_x_vertices * dimensions * (row+1);           //init top left/right starting indice
+        int top_right_index = top_left_index + dimensions;
+        
+        for(int col = 0; col < (num_x_vertices -1); col++){     // for each row, iterate through columns of x
+            int curr = (col*dimensions) + (row*num_x_vertices*dimensions);
+            
+            // Bottom triangle vertices
+            vec3 t1_v1(mesh_positions[curr], mesh_positions[curr+1], mesh_positions[curr+2]);
+            vec3 t1_v2(mesh_positions[curr+3], mesh_positions[curr+4], mesh_positions[curr+5]);
+            vec3 t1_v3(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
+            vec3 t1_normal = cross((t1_v3 - t1_v2), (t1_v1 - t1_v2));
+            t1_normal = normalize(t1_normal);
+            //cout << "t1_normal: " << "x: " << t1_normal[0] << " y: " << t1_normal[1] << " z: " << t1_normal[2] << endl;
+            mesh_normals[index] = t1_normal[0];
+            index++;
+            mesh_normals[index] = t1_normal[1];
+            index++;
+            mesh_normals[index] = t1_normal[2];
+            index++;
+
+            // Top triangle vertices
+            vec3 t2_v1(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
+            vec3 t2_v2(mesh_positions[top_left_index],  mesh_positions[top_left_index+1],  mesh_positions[top_left_index+2]);
+            vec3 t2_v3(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
+            vec3 t2_normal = cross((t2_v3 - t2_v2), (t2_v1 - t2_v2));
+            t2_normal = normalize(t2_normal);
+            //cout << "t2_normal: " << "x: " << t2_normal[0] << " y: " << t2_normal[1] << " z: " << t2_normal[2] << endl;
+            mesh_normals[index] = t2_normal[0];
+            index++;
+            mesh_normals[index] = t2_normal[1];
+            index++;
+            mesh_normals[index] = t2_normal[2];
+            index++;
+
+            top_left_index +=3;
+            top_right_index +=3;
+        }
+    }
+}
+
+void RenderMesh(){
+    // Data now stored and ready, Render two different colored triangles for each square
+    int normal_index = 0;
     for(int row = 0; row < (num_y_vertices - 1); row++){                // iterate through rows of y
         int top_left_index = num_x_vertices * dimensions * (row+1);           //init top left/right starting indice
         int top_right_index = top_left_index + dimensions;
@@ -49,21 +122,24 @@ void RenderMeshDemo(){
             int curr = (col*dimensions) + (row*num_x_vertices*dimensions);
             //cout << "curr: " << curr << endl;
             // Bottom triangle (blue)
+            glNormal3f(mesh_normals[0], mesh_normals[1], mesh_normals[2]);               // per face/primitive normal for now, smoother image may be developed with normal per vertex... (TODO)
             glBegin(GL_TRIANGLES);
-            glColor3f(0, 0, 0.5);           //blue
-            glVertex3f(mesh_data[curr],  mesh_data[curr+1],  mesh_data[curr+2]);
-            glVertex3f(mesh_data[curr+3],  mesh_data[curr+4],  mesh_data[curr+5]);
-            glVertex3f(mesh_data[top_right_index],  mesh_data[top_right_index+1],  mesh_data[top_right_index+2]);
+            glColor3f(1, 1, 1);           //blue
+            glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
+            glVertex3f(mesh_positions[curr+3],  mesh_positions[curr+4],  mesh_positions[curr+5]);
+            glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glEnd();
 
             // Top triangle (red)
+            glNormal3f(mesh_normals[3], mesh_normals[4], mesh_normals[5]);
             glBegin(GL_TRIANGLES);
-            glColor3f(0.5, 0, 0);           //red
-            glVertex3f(mesh_data[top_right_index],  mesh_data[top_right_index+1],  mesh_data[top_right_index+2]);
-            glVertex3f(mesh_data[top_left_index],  mesh_data[top_left_index+1],  mesh_data[top_left_index+2]);
-            glVertex3f(mesh_data[curr],  mesh_data[curr+1],  mesh_data[curr+2]);
+            glColor3f(1, 1, 1);           //red
+            glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
+            glVertex3f(mesh_positions[top_left_index],  mesh_positions[top_left_index+1],  mesh_positions[top_left_index+2]);
+            glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
             glEnd();
 
+            normal_index += 6;
             top_left_index +=3;
             top_right_index +=3;
         }
@@ -85,14 +161,52 @@ void GenMeshVertices(){
         //cout << "j: " << j << endl;
         for(int i = 0; i < num_x_vertices; i++){
             //cout << "i: " << i << "  ";
-            mesh_data[index] = x + i*step_size;      //x
+            mesh_positions[index] = x + i*step_size;      //x
             index++;
-            mesh_data[index] = y + j*step_size;      //y
+            mesh_positions[index] = y + j*step_size;      //y
             index++;
-            mesh_data[index] = z;      //z
+            mesh_positions[index] = sin(10*mesh_positions[index-2] + 3.14/2.0)/5;      //z is a sin wave for shader testing
             index++;
         }
     } 
+}
+
+static void Vertex(double th,double ph){
+    double x = Sin(th)*Cos(ph);
+    double y = Cos(th)*Cos(ph);
+    double z =         Sin(ph);
+    //  For a sphere at the origin, the position
+    //  and normal vectors are the same
+    glNormal3d(x,y,z);
+    glVertex3d(x,y,z);
+}
+
+static void RenderSphere(double tx, double ty, double tz, double r){
+    // Save transformation
+    glPushMatrix();
+    // Offset, scale and rotate
+    glTranslated(tx,ty,tz);
+    glScaled(r,r,r);
+    // White ball with yellow specular
+    float yellow[]   = {1.0,1.0,0.0,1.0};
+    float Emission[] = {0.0,0.0,0.01f*sun_emission,1.0};
+    glColor3f(1,1,1);
+    glMaterialf(GL_FRONT,GL_SHININESS,1);            // 1 can be replaced by shiny? value
+    glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
+    glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
+    // Bands of latitude
+    for (int ph=-90;ph<90;ph+=sun_increment)
+    {
+        glBegin(GL_QUAD_STRIP);
+        for (int th=0;th<=360;th+=2*sun_increment)
+        {
+            Vertex(th, ph);
+            Vertex(th, ph+sun_increment);
+        }
+        glEnd();
+    }
+    //  Undo transofrmations
+    glPopMatrix();
 }
 
 void Display(){
@@ -118,13 +232,40 @@ void Display(){
         // TODO
     }
 
-    // TODO Shading/Light
-    glDisable(GL_LIGHTING);
+    glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
 
+    // Set lighting - main light source is the 'Sun'
+    if(sun_on){
+        //  Translate intensity to color vectors
+        float Ambient[]   = {0.01f*(float)sun_ambient,0.01f*(float)sun_ambient,0.01f*(float)sun_ambient,1.0};
+        float Diffuse[]   = {0.01f*(float)sun_diffuse,0.01f*(float)sun_diffuse,0.01f*(float)sun_diffuse,1.0};
+        float Specular[]  = {0.01f*(float)sun_specular,0.01f*(float)sun_specular,0.01f*(float)sun_specular,1.0};
+        float Position[]  = {sun_distance*Cos(sun_azimuth),sun_elevation,sun_distance*Sin(sun_azimuth),1.0};    //  Light position
+        //  Draw light position as ball (still no lighting here)
+        glColor3f(1, 1, 1);
+        RenderSphere(Position[0], Position[1], Position[2] , 0.1);
+        glEnable(GL_NORMALIZE);                                         //  OpenGL should normalize normal vectors, may not be necessary
+        //  Enable lighting
+        glEnable(GL_LIGHTING);
+        int local = 0;                                                  //local viewer model can be set to one if feature necessary
+        glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER,local);               //  Location of viewer for specular calculations
+        glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);      //  glColor sets ambient and diffuse color materials
+        glEnable(GL_COLOR_MATERIAL);
+        glEnable(GL_LIGHT0);                                            //  Enable light 0
+        //  Set ambient, diffuse, specular components and position of light 0
+        glLightfv(GL_LIGHT0,GL_AMBIENT ,Ambient);
+        glLightfv(GL_LIGHT0,GL_DIFFUSE ,Diffuse);
+        glLightfv(GL_LIGHT0,GL_SPECULAR,Specular);
+        glLightfv(GL_LIGHT0,GL_POSITION,Position);
+    }
+    else{
+        glDisable(GL_LIGHTING);
+    }
+    
     // Draw Calls Here
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
-    RenderMeshDemo();
+    RenderMesh();
 
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -133,7 +274,7 @@ void Display(){
     if(toggle_axes){
         // Draw Lines
         glBegin(GL_LINES);
-        glColor3f(1.0, 1.0, 1.0);
+        glColor3f(1.0, 0.0, 0.0);
         glVertex3d(0.0, 0.0, 0.0);
         glVertex3d(1.0, 0.0, 0.0);
         glVertex3d(0.0, 0.0, 0.0);
@@ -162,6 +303,13 @@ void Reshape(int width, int height){
     }
     Project(view_mode ? field_of_view : 0, aspect_ratio, zoom);         //  Set projection
 }
+void Idle(){
+    // Where time should be tracked
+    double time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
+    sun_azimuth = fmod(20*time, 360.0);             // multiple is how many degrees moving per second
+    //cout << time << endl;
+    glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
+}
 void SpecialBindings(int key, int x, int y){
     if      (key == GLUT_KEY_RIGHT)             { azimuth += 5; }                       //  Right arrow key - increase angle by 5 degrees
     else if (key == GLUT_KEY_LEFT)              { azimuth -= 5; }                       //  Left arrow key - decrease angle by 5 degrees
@@ -171,6 +319,7 @@ void SpecialBindings(int key, int x, int y){
     else if (key == GLUT_KEY_PAGE_UP && zoom>1) { zoom -= 0.1; }                        //  PageDown key - decrease dim
     else if (key == GLUT_KEY_F1)                { toggle_axes = 1 - toggle_axes; }      //  F1 - Toggle Axes
     else if (key == GLUT_KEY_F2)                { view_mode = 1 - view_mode; }          //  F2 - Change View Mode
+    else if (key == GLUT_KEY_F3)                { sun_move = 1 - sun_move; }            //  F3 - Pause motion of sun
 
     //  Keep angles to +/-360 degrees
     azimuth %= 360;
@@ -179,13 +328,20 @@ void SpecialBindings(int key, int x, int y){
     //  Update projection
     Project(view_mode ? field_of_view : 0, aspect_ratio, zoom);
     
+    //  Animate if requested
+    glutIdleFunc(sun_move ? Idle : NULL);
+
     //  Tell GLUT it is necessary to redisplay the scene
     glutPostRedisplay();
 }
+
 void KeyboardBindings(unsigned char key, int x, int y){
     //  Exit on ESC
-    if (key == 27)
+    if (key == 27){
+        PrintData(mesh_normals, mesh_normals_length);
         exit(0);
+    }
+        
     
     //  Change field of view angle
     else if (key == '-' && key>1)
@@ -196,16 +352,12 @@ void KeyboardBindings(unsigned char key, int x, int y){
     //  Reproject
     Project(view_mode ? field_of_view : 0, aspect_ratio, zoom);
 
-    //  Animate if requested
-    //glutIdleFunc( move_light ? idle : NULL);
+    
 
     //  Tell GLUT it is necessary to redisplay the scene
     glutPostRedisplay();
 }
-void Idle(){
-    // Where time should be tracked
-    glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
-}
+
 void Fatal(const char* error_message){
    cout << error_message << endl;
    exit(0);
@@ -213,20 +365,24 @@ void Fatal(const char* error_message){
 void Init(){
     azimuth = 0;
     elevation = 0;
+
+    // Generate Mesh Vertices as specified in globals
     GenMeshVertices();
-}
+    GenMeshNormals();
 
-
-//___Main__________________________________________________________________________________________________________________
-
-int main() {
-
-    Init();         // initialize
     // Set null arguments and initialize GLUT
     int arg_c = 0;
     char* arg_v[1] = {(char*)"Nothing"};
     glutInit(&arg_c, arg_v);                                        // initialize GLUT
-    
+}
+
+//_________________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
+//_________________________________________________________________________________________________________________________
+
+int main() {
+    Init();         // initialize
+
     // Display Window
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);       // (true color | z buffering | double buffered)
         // Double buffering allows concurrent drawing on one buffer and display on another
@@ -236,6 +392,7 @@ int main() {
     #ifdef USEGLEW
         if(glewInit() != GLEW_OK) Fatal("ERROR: Failed to Initialize GLEW");
     #endif
+    //if(glewInit() != GLEW_OK) Fatal("ERROR: Failed to Initialize GLEW");
 
     // Set Callbacks (main game loop)
     glutDisplayFunc(Display);
@@ -247,5 +404,6 @@ int main() {
     //ErrCheck("main");
     glutMainLoop();
 
+    
 	return 0;
 }

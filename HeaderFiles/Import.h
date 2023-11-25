@@ -5,11 +5,19 @@
 #pragma once
 using namespace std;
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
+
+#include "../GL_Files/GLM/glm.hpp"
+#include "../GL_Files/GLM/gtc/matrix_transform.hpp"
+#include "../GL_Files/GLM/gtc/type_ptr.hpp"
+using namespace glm;
+
+//#define USEGLEW      // consider alternatives
 
 // GLEW _MUST_ be included first
 #ifdef USEGLEW
@@ -48,8 +56,8 @@ using namespace std;
 #endif
 
 //  cos and sin in degrees
-#define Cos(th) cos(3.14159265/180*(th))
-#define Sin(th) sin(3.14159265/180*(th))
+#define Cos(x) cos(3.14159265f/180.0f*(x))
+#define Sin(x) sin(3.14159265f/180.0f*(x))
 
 #define LEN 8192  //  Maximum length of text string
 void Print(const char* format , ...)
