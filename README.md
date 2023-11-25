@@ -20,3 +20,6 @@ Running:
 * Terrain generation inspirations:
     * Youtube: Thin Matrix - https://www.youtube.com/watch?v=l6PEfzQVpvM, OGLDEV - https://www.youtube.com/watch?v=xoqESu9iOUE, The Cherno (OpenGL series)
     * Blog: Iago Toral - https://blogs.igalia.com/itoral/2016/10/13/opengl-terrain-renderer-rendering-the-terrain-mesh/
+* Heightmap Processing
+    * Function based on learnopengl.com example - https://learnopengl.com/Guest-Articles/2021/Tessellation/Height-map
+    * stb_image library - https://github.com/nothings/stb/blob/master/stb_image.h

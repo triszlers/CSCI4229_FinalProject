@@ -1,21 +1,24 @@
 #include <iostream>
 #include <string>
 #include <array>
+#include <vector>
 
 #pragma once
 using namespace std;
-
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
+#include <bits/stdc++.h> 
 
-#include "../GL_Files/GLM/glm.hpp"
-#include "../GL_Files/GLM/gtc/matrix_transform.hpp"
-#include "../GL_Files/GLM/gtc/type_ptr.hpp"
+#include "../Dependencies/GLM/glm.hpp"
+#include "../Dependencies/GLM/gtc/matrix_transform.hpp"
+#include "../Dependencies/GLM/gtc/type_ptr.hpp"
 using namespace glm;
+
+#include "../Dependencies/STB/stb_image.cpp"
 
 //#define USEGLEW      // consider alternatives
 
