@@ -66,8 +66,12 @@ vector<float> middleeast_zvals;
 vector<float> mountains_zvals;
 vector<float> sealine_zvals;
 vector<vector<float>> maps;         // vector of vectors containing all map data
+vector<string> map_type;           // index associated with map contains a type string characterizing the type of biome/environment for color/lighting changes
 float z_vals_max;
+float num_segments;
+float segment_size;                 // segments specify where specific color changes occur (ex: mountain snow line)
 int maps_index = 0;
+int pixels;
 
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
@@ -144,7 +148,15 @@ void RenderMesh(){
                 glColor3f(0, 0, 0.502);             // zero values are set to blue (water/ocean)
             }
             else{
-                glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);                 // green depth depends on z-value: green = f(z) = z/z_values_max
+                if(mesh_positions[curr+2] >= segment_size*(num_segments-1)){        // topmost color segment
+                    glColor3f(1.000, 0.980, 0.980);                                 // white - snow
+                } 
+                else if(mesh_positions[curr+2] >= segment_size*(num_segments-2)){   // second down color segment
+                    glColor3f(0.439, 0.502, 0.565);                                 // grey - rocks
+                }
+                else{                                                               // everything else below
+                    glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);             // green depth depends on z-value: green = f(z) = z/z_values_max
+                }
             }
             glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
             glVertex3f(mesh_positions[curr+3],  mesh_positions[curr+4],  mesh_positions[curr+5]);
@@ -158,7 +170,15 @@ void RenderMesh(){
                 glColor3f(0, 0, 0.502);             // zero values are set to blue (water/ocean)
             }
             else{
-                glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);                 // green depth depends on z-value: green = f(z) = z/z_values_max
+                if(mesh_positions[curr+2] >= segment_size*(num_segments-1)){        // topmost color segment
+                    glColor3f(1.000, 0.980, 0.980);                                 // white - snow
+                } 
+                else if(mesh_positions[curr+2] >= segment_size*(num_segments-2)){   // second down color segment
+                    glColor3f(0.439, 0.502, 0.565);                                 // grey - rocks
+                }
+                else{                                                               // everything else below
+                    glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);             // green depth depends on z-value: green = f(z) = z/z_values_max
+                }
             }
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glVertex3f(mesh_positions[top_left_index],  mesh_positions[top_left_index+1],  mesh_positions[top_left_index+2]);
@@ -177,7 +197,7 @@ vector<float> ProcessHeightmap(const char* img_path){
     int width, height, nChannels;
     unsigned char *data = stbi_load(img_path, &width, &height, &nChannels, 0);
     //cout << "Width: " << width << "   Height: " << height << "   nChannels: " << nChannels << endl;
-    
+    pixels = height;
     // Generate Vertices based on color
     vector<float> z_vals;
     for(int y = 0; y < height; y++)
@@ -193,7 +213,7 @@ vector<float> ProcessHeightmap(const char* img_path){
     // Scale based on max/min, shift down by -0.5
     float max = *max_element(z_vals.begin(), z_vals.end());
     //float min = *min_element(z_vals.begin(), z_vals.end());
-    float z_scale = 0.15/(max);
+    float z_scale = ((1.0/pixels)*10*3)/(max);
     float z_shift = 0.0f;
     for(unsigned int z = 0; z < z_vals.size(); z++){
         //float scale = 1.0/(z_vals[z]/2.0);
@@ -496,22 +516,39 @@ void Init(){
         elevation = 35;
         zoom = 1.6;
     }
+    //map_type.push_back("autumn");                  // oranges and yellows, function TODO
+    //map_type.push_back("snow");                    // white out, rocks (grey) scattered high --> may want to increase emission for purple/blue hue
 
     // Preprocess all maps for easy switching & add them to maps vector
     ireland_zvals = ProcessHeightmap(ireland_heightmap);        
-    maps.push_back(ireland_zvals);   
+    maps.push_back(ireland_zvals);
+    map_type.push_back("forest");                  // all green, darkness defined by depth, G = z/z_vals_max
+   
     austrailia_zvals = ProcessHeightmap(austrailia_heightmap);
-    maps.push_back(austrailia_zvals);                                   // add vector to maps                  
+    maps.push_back(austrailia_zvals);                                   // add vector to maps    
+    map_type.push_back("mixed");                   // phase desert & forest attributes over x or y
+
     island_zvals = ProcessHeightmap(island_heightmap);
-    maps.push_back(island_zvals);                                 
+    maps.push_back(island_zvals);             
+    map_type.push_back("tundra");                  // autumn colors with snow capped mountains
+
     middleeast_zvals = ProcessHeightmap(middleeast_heightmap);          // may not be feasible heightmap
-    maps.push_back(middleeast_zvals);                                  
+    maps.push_back(middleeast_zvals);                       
+    map_type.push_back("desert");                  // yellow-red spectrum defined by depth, R = z/z_vals_max
+
     mountains_zvals = ProcessHeightmap(mountains_heightmap);
-    maps.push_back(mountains_zvals);                                  
+    maps.push_back(mountains_zvals);     
+    map_type.push_back("mountain");                // same green depth as forest, rock and snow layer at higher z vals         
+
     sealine_zvals = ProcessHeightmap(sealine_heightmap);
-    maps.push_back(sealine_zvals);                                   
+    maps.push_back(sealine_zvals);       
+    map_type.push_back("mountain");                // same green depth as forest, rock and snow layer at higher z vals                              
 
     z_vals_max = *max_element(maps[maps_index].begin(), maps[maps_index].end());    //set max value for initial map
+    num_segments = 5.0f;
+    segment_size = z_vals_max/num_segments;
+
+
     // Generate Mesh Vertices as specified in globals
     GenMeshVertices(maps[maps_index]);      //maps_index specifies initial map (0)
     GenMeshNormals();

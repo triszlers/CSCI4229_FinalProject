@@ -24,13 +24,13 @@
         * TODO
 
 ## Development Plans
-* Generate mesh on XY plane, test mesh functions with simple Glut triangle rendering
-* Update: Continue using GLUT objects to draw
-    * Get normals for every triangle in mesh--> TEST normals with lighting
-* Get lighting effects working (a slow moving sun on a timer)
+* Color Mountaintops 
+* Give different maps different 'uniforms' based on the environment there
+* Store max values in maps array for preprocessing speed, along with a 'multiplier' which specifies a specific max height multiple for that map
+* Set up mesh step size so that differently sized square images can be processed and rendered
 
-## Description
-* Import errors and varied use of global variables in main function hindered formal abstraction of functions... result is a large file application
+## Description/Notes
+* Abstraction hindered by some odd circular include errors... result is a large single file application
 * Mesh vertices are generated/stored on the xy plane for each x value in a row, then for each x in the next y value
     * see Resources/Images/mesh_data_layout.png
 
