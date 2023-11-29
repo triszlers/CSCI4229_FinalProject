@@ -15,12 +15,17 @@ int developer_mode = 1;                     // controls differ if in developer m
 int display_parameters = 0;                 // when pressed, current relevant parameters will be printed to console
 
 //-_-_-_-_-_-_-_Light Attributes_-_-_-_-_-_-_-_-_-_-_
-int sun_on = 1;
-int sun_move = 1;                           // start with Idle function --> sun moving
-float sun_distance = 2.0f;
-int sun_increment = 10;
+int sun_on = 1;                             // turn lighting on/off
+bool sun_paused = 0;                        // stop/start sun movement
+double curr_time = 0;
+bool time_flag = false;                     // used to stop/start sun from same position if paused
+double sub_time = 0;                        // used to stop/start sun from same position if paused
+double prev_time = 0;                       // used to stop/start sun from same position if paused
+//int sun_move = 1;                           // start with Idle function --> sun moving
+float sun_distance = 2.0f;                  // distance of sun from origin
+int sun_increment = 10;                     
 int sun_emission = 0;                       // Emission intensity (%)   ...purpleish, night vibe
-int sun_ambient = 10;                        // Ambient intensity (%)    
+int sun_ambient = 10;                       // Ambient intensity (%)    
 int sun_diffuse = 50;                       // Diffuse intensity (%)
 int sun_specular = 0;                       // Specular intensity (%)   ...yellowish, day vibe
 int sun_shininess = 0;                      // Shininess (power of two)
@@ -59,6 +64,8 @@ vector<float> island_zvals;
 vector<float> middleeast_zvals;
 vector<float> mountains_zvals;
 vector<float> sealine_zvals;
+vector<vector<float>> maps;         // vector of vectors containing all map data
+int maps_index = 0;
 
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
@@ -140,7 +147,7 @@ void RenderMesh(){
             // Bottom triangle (blue)
             glNormal3f(mesh_normals[0], mesh_normals[1], mesh_normals[2]);               // per face/primitive normal for now, smoother image may be developed with normal per vertex... (TODO)
             glBegin(GL_TRIANGLES);
-            glColor3f(1, 1, 1);           //blue
+            glColor3f(0, (mesh_positions[curr+2]/2.0)+0.5, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
             glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
             glVertex3f(mesh_positions[curr+3],  mesh_positions[curr+4],  mesh_positions[curr+5]);
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
@@ -149,7 +156,7 @@ void RenderMesh(){
             // Top triangle (red)
             glNormal3f(mesh_normals[3], mesh_normals[4], mesh_normals[5]);
             glBegin(GL_TRIANGLES);
-            glColor3f(1, 1, 1);           //red
+            glColor3f(0, (mesh_positions[curr+2]/2.0)+0.5, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glVertex3f(mesh_positions[top_left_index],  mesh_positions[top_left_index+1],  mesh_positions[top_left_index+2]);
             glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
@@ -183,12 +190,13 @@ vector<float> ProcessHeightmap(const char* img_path){
     // Scale based on max/min, shift down by -0.5
     float max = *max_element(z_vals.begin(), z_vals.end());
     float min = *min_element(z_vals.begin(), z_vals.end());
-    float z_scale = 1.0f/max;
+    float z_scale = 1.0f/(max);
     float z_shift = 0.5f;
     for(int z = 0; z < z_vals.size(); z++){
         z_vals[z] = z_vals[z] * z_scale - z_shift;
     }
 
+    stbi_image_free(data);  // free heightmap from memory
     return z_vals;          // return z values
 }
 
@@ -283,9 +291,12 @@ void Display(){
     else if (view_mode == 1){
         // Perspective View
         double Ex = -2*zoom*Sin(azimuth)*Cos(elevation);
-        double Ey = +2*zoom*Sin(elevation);
-        double Ez = +2*zoom*Cos(azimuth)*Cos(elevation);
-        gluLookAt(Ex,Ey,Ez, 0,0,0, 0,Cos(elevation),0);         //(eye x, y, z, center x, y, z, up x, y, z)
+        double Ey = +2*zoom*Cos(azimuth)*Cos(elevation);
+        double Ez = +2*zoom*Sin(elevation);
+        // double Ex = -2*zoom*Sin(azimuth)*Cos(elevation);
+        // double Ey = +2*zoom*Sin(elevation);
+        // double Ez = +2*zoom*Cos(azimuth)*Cos(elevation);
+        gluLookAt(Ex,Ey,Ez, 0,0,0, 0,0,Cos(elevation));         //(eye x, y, z, center x, y, z, up x, y, z)
     }
     else{   
         // First Person View
@@ -349,33 +360,43 @@ void Display(){
         glRasterPos3d(0.0, 0.0, 1.1);
         Print("Z");
     }
+
     // If developer mode on, print important attributes
-    if(developer_mode && display_parameters){
-        cout << "_______________________________________________" << endl;
-        //  Display parameters
-        cout << "azimuth: " << azimuth << endl;
-        cout << "elevation: " << elevation << endl;
-        cout << "zoom: " << zoom << endl;
-        cout << "field_of_view: " << field_of_view << endl;
-        if(view_mode == 0){
-            cout << "view_mode: orthogonal" << endl;
+    if(developer_mode){
+        //Onscreen Prints
+        #ifdef USEGLEW
+            glColor3f(1, 1, 1);
+            glWindowPos2i(5, 5);            // Depends on GLEW!!!
+            Print("Developer Mode");
+        #endif
+
+        if(display_parameters){
+            // Terminal Prints
+            cout << "_______________________________________________" << endl;
+            cout << "azimuth: " << azimuth << endl;     //  Display parameters
+            cout << "elevation: " << elevation << endl;
+            cout << "zoom: " << zoom << endl;
+            cout << "field_of_view: " << field_of_view << endl;
+            if(view_mode == 0){
+                cout << "view_mode: orthogonal" << endl;
+            }
+            else if(view_mode == 1){
+                cout << "view_mode: perspective" << endl;
+            }
+            else{
+                cout << "view_mode: first person" << endl;
+            }
+            // Lighting parameters
+            if(sun_on){
+                cout << "sun_azimuth: " << sun_azimuth << endl;
+                cout << "sun_elevation: " << sun_elevation << endl;
+                cout << "sun_ambient: " << sun_ambient << endl;
+                cout << "sun_diffuse: " << sun_diffuse << endl;
+                cout << "sun_specular: " << sun_specular << endl;
+                cout << "sun_emission: " << sun_emission << endl;
+            }
+            display_parameters = 0;     //reset so it is only displayed once
         }
-        else if(view_mode == 1){
-            cout << "view_mode: perspective" << endl;
-        }
-        else{
-            cout << "view_mode: first person" << endl;
-        }
-        // Lighting parameters
-        if(sun_on){
-            cout << "sun_azimuth: " << sun_azimuth << endl;
-            cout << "sun_elevation: " << sun_elevation << endl;
-            cout << "sun_ambient: " << sun_ambient << endl;
-            cout << "sun_diffuse: " << sun_diffuse << endl;
-            cout << "sun_specular: " << sun_specular << endl;
-            cout << "sun_emission: " << sun_emission << endl;
-        }
-        display_parameters = 0;
     }
 
     //ErrCheck("Display");
@@ -393,35 +414,72 @@ void Reshape(int width, int height){
 }
 
 void Idle(){
+    if(sun_paused && !time_flag){
+        prev_time = curr_time-sub_time;        // gets time in seconds
+        // no change to sun_azimuth
+        time_flag = true;
+        cout << "Sun paused, prev_time: " << prev_time << endl;
+    }
+    else if(!sun_paused){
+        if(time_flag){
+            
+            sub_time = glutGet(GLUT_ELAPSED_TIME)/1000.0 - prev_time;
+            time_flag = false;
+            cout << "starting again, sub_time: " << sub_time << "   prev_time: " << prev_time << endl;
+        }
+        curr_time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
+        cout << "curr_time: " << curr_time << "    curr_time-sub_time: " << curr_time-sub_time << endl;
+        sun_azimuth = fmod(20*(curr_time-sub_time), 360.0);                     // multiple is how many degrees rotating per second
+        glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
+    }
     // Where time should be tracked
-    double time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
-    sun_azimuth = fmod(20*time, 360.0);             // multiple is how many degrees moving per second
+    
     //cout << time << endl;
-    glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
+    
+}
+
+void SwitchMap(){
+    if(maps_index == (int)maps.size()-1){
+        maps_index = 0;
+    }
+    else{
+        maps_index++;
+    }
+    // Generate Mesh Vertices as specified in globals
+    GenMeshVertices(maps[maps_index]);      //maps_index specifies initial map (0)
+    GenMeshNormals();
 }
 
 void SpecialBindings(int key, int x, int y){
-    if      (key == GLUT_KEY_RIGHT)             { azimuth += 5; }                           //  Right arrow key - increase angle by 5 degrees
-    else if (key == GLUT_KEY_LEFT)              { azimuth -= 5; }                           //  Left arrow key - decrease angle by 5 degrees
-    else if (key == GLUT_KEY_UP)                { elevation -= 5; }                         //  Up arrow key - increase elevation by 5 degrees
-    else if (key == GLUT_KEY_DOWN)              { elevation += 5; }                         //  Down arrow key - decrease elevation by 5 degrees
-    else if (key == GLUT_KEY_PAGE_DOWN)         { zoom += 0.1; }                            //  PageUp key - increase dim
-    else if (key == GLUT_KEY_PAGE_UP && zoom>1) { zoom -= 0.1; }                            //  PageDown key - decrease dim
-    else if (key == GLUT_KEY_F1)                { toggle_axes = 1 - toggle_axes; }          //  F1 - Toggle Axes
-    else if (key == GLUT_KEY_F2)                { view_mode = 1 - view_mode; }              //  F2 - Change View Mode
-    else if (key == GLUT_KEY_F3)                { sun_move = 1 - sun_move; }                //  F3 - Pause motion of sun
-    else if (key == GLUT_KEY_F4)                { developer_mode = 1 - developer_mode; }    //  F4 - Toggle developer mode
-    else if (key == GLUT_KEY_F5)                { display_parameters = 1; }                 //  F5 - Display parameters once
+    //Shared keybindings (player and developer mode)
+    if      (key == GLUT_KEY_F1)                { developer_mode = 1 - developer_mode; }    //  F1 - Toggle developer mode
+    
+    // Developer Mode Keybindings
+    if(developer_mode){
+        if      (key == GLUT_KEY_F2)                { view_mode = 1 - view_mode; }              //  F2 - Change View Mode
+        else if (key == GLUT_KEY_F3)                { sun_paused = 1 - sun_paused; }                //  F3 - Pause motion of sun
+        else if (key == GLUT_KEY_F4)                { toggle_axes = 1 - toggle_axes; }          //  F4 - Toggle Axes
+        else if (key == GLUT_KEY_F5)                { display_parameters = 1; }                 //  F5 - Display parameters once
+        else if (key == GLUT_KEY_F6)                { SwitchMap(); }                            //  F6 - Switch Map
+        else if (key == GLUT_KEY_F6)                { sun_on = 1 - sun_on; }                    //  F7 - Turn sun (light) on/off
+        else if (key == GLUT_KEY_RIGHT)             { azimuth += 5; }                           //  Right arrow key - increase angle by 5 degrees
+        else if (key == GLUT_KEY_LEFT)              { azimuth -= 5; }                           //  Left arrow key - decrease angle by 5 degrees
+        else if (key == GLUT_KEY_UP)                { elevation -= 5; }                         //  Up arrow key - increase elevation by 5 degrees
+        else if (key == GLUT_KEY_DOWN)              { elevation += 5; }                         //  Down arrow key - decrease elevation by 5 degrees
+        else if (key == GLUT_KEY_PAGE_DOWN)         { zoom += 0.1; }                            //  PageUp key - increase dim
+        else if (key == GLUT_KEY_PAGE_UP && zoom>1) { zoom -= 0.1; }                            //  PageDown key - decrease dim
+    }
+    // Player Mode Keybindings
+    else{
+        //TODO: Player controls
+        cout << "";
+    }
 
-    //  Keep angles to +/-360 degrees
     azimuth %= 360;
-    elevation %= 360;
-    //  Update projection
-    Project(view_mode ? field_of_view : 0, aspect_ratio, zoom);
-    //  Animate if requested
-    glutIdleFunc(sun_move ? Idle : NULL);
-    //  Tell GLUT it is necessary to redisplay the scene
-    glutPostRedisplay();
+    elevation %= 360;               //  Keep angles to +/-360 degrees
+    Project(view_mode ? field_of_view : 0, aspect_ratio, zoom);     //  Update projection
+    //glutIdleFunc(sun_paused ? Idle : NULL);                           //  Animate if requested
+    glutPostRedisplay();                                            //  Tell GLUT it is necessary to redisplay the scene
 }
 
 void KeyboardBindings(unsigned char key, int x, int y){
@@ -443,8 +501,8 @@ void KeyboardBindings(unsigned char key, int x, int y){
         else if (key=='e' && sun_emission>0){   sun_emission -= 5; }        // Emission level 
         else if (key=='E' && sun_emission<100){ sun_emission += 5; }
         // View Controls
-        else if (key == '-' && key>1){          field_of_view--; }
-        else if (key == '=' && key<179){        field_of_view++; }
+        else if (key == '-' && key>1){          field_of_view++; }
+        else if (key == '=' && key<179){        field_of_view--; }
     }
 
     // Player Mode Keybindings
@@ -466,20 +524,28 @@ void Fatal(const char* error_message){
 
 void Init(){
     if(developer_mode){
-        azimuth = 10;
-        elevation = 245;
+        view_mode = 1;
+        azimuth = 45;
+        elevation = 35;
+        zoom = 1.6;
     }
-    
-    // Preprocess all maps for ease of selection
+
+    // Preprocess all maps for easy switching & add them to maps vector
+    ireland_zvals = ProcessHeightmap(ireland_heightmap);           
+    maps.push_back(ireland_zvals);   
     austrailia_zvals = ProcessHeightmap(austrailia_heightmap);
-    ireland_zvals = ProcessHeightmap(ireland_heightmap);
+    maps.push_back(austrailia_zvals);                                   // add vector to maps                  
     island_zvals = ProcessHeightmap(island_heightmap);
-    middleeast_zvals = ProcessHeightmap(middleeast_heightmap);
+    maps.push_back(island_zvals);                                 
+    middleeast_zvals = ProcessHeightmap(middleeast_heightmap);          // may not be feasible heightmap
+    maps.push_back(middleeast_zvals);                                  
     mountains_zvals = ProcessHeightmap(mountains_heightmap);
+    maps.push_back(mountains_zvals);                                  
     sealine_zvals = ProcessHeightmap(sealine_heightmap);
+    maps.push_back(sealine_zvals);                                   
 
     // Generate Mesh Vertices as specified in globals
-    GenMeshVertices(middleeast_zvals);
+    GenMeshVertices(maps[maps_index]);      //maps_index specifies initial map (0)
     GenMeshNormals();
 
     // Set null arguments and initialize GLUT

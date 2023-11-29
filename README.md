@@ -1,8 +1,27 @@
 ## Instructions
-Compilation:
-    > g++ -Wall -o Game SourceFiles/Game.cpp -lfreeglut -lglew32 -lglu32 -lopengl32 -lm
-Running:
-    > ./Game
+* LAUNCH THE EXECUTABLE "Game.exe"
+* Compiling/Running:
+    * Compilation: > g++ -Wall -o Game SourceFiles/Game.cpp -lfreeglut -lglew32 -lglu32 -lopengl32 -lm
+    * Running: > ./Game
+* Controls:
+    * Shared Controls (developer and player)
+        * F1 - Toggle Developer Mode:
+    * Developer Mode Controls:
+        * F2 - Change view (orthogonal/perspective)
+        * F3 - Pause the sun (primary light source)
+        * F4 - Toggle Axes
+        * F5 - Display Parameters in terminal
+        * F6 - Switch Map
+        * F7 - Turn sun (light) on/off
+        * Arrow Keys: Rotate around origin
+        * Page up/down: Zoom in/out
+        * A/a: Increase/decrease ambient light
+        * D/d: Increase/decrease diffuse light
+        * S/s: Increase/decrease specular level
+        * E/e: Increase/decrease emission level
+        * =/-: Increase/decrease field of view
+    * Player Controls:
+        * TODO
 
 ## Development Plans
 * Generate mesh on XY plane, test mesh functions with simple Glut triangle rendering

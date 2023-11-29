@@ -20,11 +20,12 @@ using namespace glm;
 
 #include "../Dependencies/STB/stb_image.cpp"
 
-//#define USEGLEW      // consider alternatives
+#define USEGLEW      // consider alternatives
 
 // GLEW _MUST_ be included first
 #ifdef USEGLEW
-#include <GL/glew.h>
+#include "../Dependencies/GLEW/glew.h"    // depend only on local GLEW file
+//#include <GL/glew.h>
 #endif
 //  Get all GL prototypes
 #define GL_GLEXT_PROTOTYPES
@@ -36,11 +37,14 @@ using namespace glm;
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
 #elif defined(GLFW)
-#include <GLFW/glfw3.h>
+#include "../Dependencies/GLFW/glfw3.h"
+//#include <GLFW/glfw3.h>
 #elif defined(__APPLE__)
-#include <GLUT/glut.h>
+#include "../Dependencies/GLUT/glut.h"    // depend only on local GLUT file
+//#include <GLUT/glut.h>
 #else
-#include <GL/glut.h>
+#include "../Dependencies/GLUT/glut.h"    // depend only on local GLUT file
+//#include <GL/glut.h>
 #endif
 //  Make sure GLU and GL are included
 #ifdef __APPLE__
