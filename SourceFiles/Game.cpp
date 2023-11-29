@@ -66,6 +66,7 @@ vector<float> middleeast_zvals;
 vector<float> mountains_zvals;
 vector<float> sealine_zvals;
 vector<vector<float>> maps;         // vector of vectors containing all map data
+float z_vals_max;
 int maps_index = 0;
 
 //_________________________________________________________________________________________________________________________
@@ -140,10 +141,10 @@ void RenderMesh(){
             glNormal3f(mesh_normals[0], mesh_normals[1], mesh_normals[2]);               // per face/primitive normal for now, smoother image may be developed with normal per vertex... (TODO)
             glBegin(GL_TRIANGLES);
             if(!mesh_positions[curr+2]){
-                glColor3f(0, 0, 0.502);
+                glColor3f(0, 0, 0.502);             // zero values are set to blue (water/ocean)
             }
             else{
-                glColor3f(0, 1, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
+                glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);                 // green depth depends on z-value: green = f(z) = z/z_values_max
             }
             glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
             glVertex3f(mesh_positions[curr+3],  mesh_positions[curr+4],  mesh_positions[curr+5]);
@@ -154,10 +155,10 @@ void RenderMesh(){
             glNormal3f(mesh_normals[3], mesh_normals[4], mesh_normals[5]);
             glBegin(GL_TRIANGLES);
             if(!mesh_positions[curr+2]){
-                glColor3f(0, 0, 0.502);
+                glColor3f(0, 0, 0.502);             // zero values are set to blue (water/ocean)
             }
             else{
-                glColor3f(0, 1, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
+                glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);                 // green depth depends on z-value: green = f(z) = z/z_values_max
             }
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glVertex3f(mesh_positions[top_left_index],  mesh_positions[top_left_index+1],  mesh_positions[top_left_index+2]);
@@ -413,6 +414,7 @@ void SwitchMap(){
     // Generate Mesh Vertices as specified in globals
     GenMeshVertices(maps[maps_index]);      //maps_index specifies initial map (0)
     GenMeshNormals();
+    z_vals_max = *max_element(maps[maps_index].begin(), maps[maps_index].end());   //get max value for current map (for gradient coloring)
 }
 
 void SpecialBindings(int key, int x, int y){
@@ -496,7 +498,7 @@ void Init(){
     }
 
     // Preprocess all maps for easy switching & add them to maps vector
-    ireland_zvals = ProcessHeightmap(ireland_heightmap);           
+    ireland_zvals = ProcessHeightmap(ireland_heightmap);        
     maps.push_back(ireland_zvals);   
     austrailia_zvals = ProcessHeightmap(austrailia_heightmap);
     maps.push_back(austrailia_zvals);                                   // add vector to maps                  
@@ -509,6 +511,7 @@ void Init(){
     sealine_zvals = ProcessHeightmap(sealine_heightmap);
     maps.push_back(sealine_zvals);                                   
 
+    z_vals_max = *max_element(maps[maps_index].begin(), maps[maps_index].end());    //set max value for initial map
     // Generate Mesh Vertices as specified in globals
     GenMeshVertices(maps[maps_index]);      //maps_index specifies initial map (0)
     GenMeshNormals();
