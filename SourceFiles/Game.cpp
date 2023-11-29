@@ -1,9 +1,10 @@
 #include "../HeaderFiles/Import.h"         // Contains all necessary imports for OpenGL
 
-//___Global Variables______________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
-//-_-_-_-_-_-_-_Camera/View Attributes_-_-_-_-_-_-_-_
+//_________________________________________________________________________________________________________________________
+
+//-_-_-_-_-_-_-_Camera/View Attributes_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 int azimuth = 0;                            // angle to x-axis
 int elevation = 0;                          // angle (up) to z-axis
 double zoom = 3;                            // dimension/zoom, distance from origin
@@ -14,7 +15,7 @@ int field_of_view = 55;                     // field of view
 int developer_mode = 1;                     // controls differ if in developer mode --> set this to zero on release
 int display_parameters = 0;                 // when pressed, current relevant parameters will be printed to console
 
-//-_-_-_-_-_-_-_Light Attributes_-_-_-_-_-_-_-_-_-_-_
+//-_-_-_-_-_-_-_Light Attributes_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 int sun_on = 1;                             // turn lighting on/off
 bool sun_paused = 0;                        // stop/start sun movement
 double curr_time = 0;
@@ -34,7 +35,7 @@ float sun_azimuth = 90.0f;                  // Light azimuth
 float sun_elevation = 0.0f;                 // Elevation of light
 int smooth = 1;                             // toggles smooth or flat shading
 
-//-_-_-_-_-_-_-_Mesh Attributes_-_-_-_-_-_-_-_-_-_-_-
+//-_-_-_-_-_-_-_Mesh Attributes_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 const float start_x = -1;
 const float start_y = -1;
 const float stretch_x = 2;
@@ -46,12 +47,12 @@ const int dimensions = 3;
 const int mesh_positions_length = num_x_vertices*num_y_vertices*dimensions;             // dimension of each vertice
 float mesh_positions[mesh_positions_length];                                            // vertices store positions of triangle mesh
 const int num_triangles = (num_x_vertices-1)*(num_y_vertices-1)*2;
-//const int mesh_indices_length = num_triangles*3;                                        // 3 indices for each triangle
-//float mesh_indices[mesh_indices_length];                                                // stores indices of 
+//const int mesh_indices_length = num_triangles*3;                                      // 3 indices for each triangle
+//float mesh_indices[mesh_indices_length];                                              // stores indices of 
 const int mesh_normals_length = num_triangles*3;                                        // x, y, z for each triangle normal --> storing only 1 normal per triangle for low-poly terrain
 float mesh_normals[mesh_normals_length];                                                // 3d normals of each triangle
 
-//-_-_-_-_-_-_-_Heightmap Attributes_-_-_-_-_-_-_-_-_-_-_-
+//-_-_-_-_-_-_-_Heightmap Attributes_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 const char* austrailia_heightmap = "Resources/Images/austrailia_heightmap.png";
 const char* ireland_heightmap = "Resources/Images/ireland_heightmap.png";
 const char* island_heightmap = "Resources/Images/island_heightmap.png";
@@ -71,14 +72,6 @@ int maps_index = 0;
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
 
-
-//___Functions_____________________________________________________________________________________________________________
-//_________________________________________________________________________________________________________________________
-//_________________________________________________________________________________________________________________________
-
-// Generates Mesh vertices on the x-y plane at specified starting position
-    //TODO: Generate Z vertices algorithmically -- for now they are zero
-    //test z vertices w/ simple sin wave  in 1 variable (sin(x))
 void PrintData(float data[], int data_length){
     for(int i = 0; i < data_length; i++){
         if((i+1)%3 == 0){                   //end line on 3rd vertex (z)
@@ -90,7 +83,6 @@ void PrintData(float data[], int data_length){
     }
 }
 
-//Store normals in same manner as they are rendered for ease of use
 void GenMeshNormals(){
     // Data now stored and ready, Render two different colored triangles for each square
     int index = 0;
@@ -173,7 +165,7 @@ vector<float> ProcessHeightmap(const char* img_path){
     // Load Heightmap
     int width, height, nChannels;
     unsigned char *data = stbi_load(img_path, &width, &height, &nChannels, 0);
-    //cout << "Width: " << width << "   Height: " << height << "   nChannels: " << nChannels << endl;
+    cout << "Width: " << width << "   Height: " << height << "   nChannels: " << nChannels << endl;
     
     // Generate Vertices based on color
     vector<float> z_vals;
@@ -190,9 +182,10 @@ vector<float> ProcessHeightmap(const char* img_path){
     // Scale based on max/min, shift down by -0.5
     float max = *max_element(z_vals.begin(), z_vals.end());
     //float min = *min_element(z_vals.begin(), z_vals.end());
-    float z_scale = 1.0f/(max);
-    float z_shift = 0.5f;
+    float z_scale = 0.15/(max);
+    float z_shift = 0.0f;
     for(unsigned int z = 0; z < z_vals.size(); z++){
+        //float scale = 1.0/(z_vals[z]/2.0);
         z_vals[z] = z_vals[z] * z_scale - z_shift;
     }
 
@@ -380,17 +373,17 @@ void Idle(){
         prev_time = curr_time-sub_time;        // gets time in seconds
         // no change to sun_azimuth
         time_flag = true;
-        cout << "Sun paused, prev_time: " << prev_time << endl;
+        //cout << "Sun paused, prev_time: " << prev_time << endl;
     }
     else if(!sun_paused){
         if(time_flag){
             
             sub_time = glutGet(GLUT_ELAPSED_TIME)/1000.0 - prev_time;
             time_flag = false;
-            cout << "starting again, sub_time: " << sub_time << "   prev_time: " << prev_time << endl;
+            //cout << "starting again, sub_time: " << sub_time << "   prev_time: " << prev_time << endl;
         }
         curr_time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
-        cout << "curr_time: " << curr_time << "    curr_time-sub_time: " << curr_time-sub_time << endl;
+        //cout << "curr_time: " << curr_time << "    curr_time-sub_time: " << curr_time-sub_time << endl;
         sun_azimuth = fmod(20*(curr_time-sub_time), 360.0);                     // multiple is how many degrees rotating per second
         glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
     }
