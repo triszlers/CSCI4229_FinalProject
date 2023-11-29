@@ -189,10 +189,10 @@ vector<float> ProcessHeightmap(const char* img_path){
 
     // Scale based on max/min, shift down by -0.5
     float max = *max_element(z_vals.begin(), z_vals.end());
-    float min = *min_element(z_vals.begin(), z_vals.end());
+    //float min = *min_element(z_vals.begin(), z_vals.end());
     float z_scale = 1.0f/(max);
     float z_shift = 0.5f;
-    for(int z = 0; z < z_vals.size(); z++){
+    for(unsigned int z = 0; z < z_vals.size(); z++){
         z_vals[z] = z_vals[z] * z_scale - z_shift;
     }
 
@@ -228,16 +228,6 @@ void GenMeshVertices(vector<float> z_vals){
     } 
 }
 
-static void Vertex(double th,double ph){
-    double x = Sin(th)*Cos(ph);
-    double y = Cos(th)*Cos(ph);
-    double z =         Sin(ph);
-    //  For a sphere at the origin, the position
-    //  and normal vectors are the same
-    glNormal3d(x,y,z);
-    glVertex3d(x,y,z);
-}
-
 static void RenderSun(double tx, double ty, double tz, double r){
     glDisable(GL_LIGHTING);
     //Render sun as GLUT object so that it is not effected by lighting
@@ -247,34 +237,6 @@ static void RenderSun(double tx, double ty, double tz, double r){
     glColor3f(1,1,0.3);             // Yellow ball
     glutSolidSphere(1.0,16,16);
     glPopMatrix();                  // Undo transofrmations
-}
-
-static void RenderSphere(double tx, double ty, double tz, double r){
-    // Save transformation
-    glPushMatrix();
-    // Offset, scale and rotate
-    glTranslated(tx,ty,tz);
-    glScaled(r,r,r);
-    // White ball with yellow specular
-    float yellow[]   = {1.0,1.0,0.0,1.0};
-    float Emission[] = {0.0,0.0,0.01f*sun_emission,1.0};
-    glColor3f(1,1,0);
-    glMaterialf(GL_FRONT,GL_SHININESS,1);            // 1 can be replaced by shiny? value
-    glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
-    glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
-    // Bands of latitude
-    for (int ph=-90;ph<90;ph+=sun_increment)
-    {
-        glBegin(GL_QUAD_STRIP);
-        for (int th=0;th<=360;th+=2*sun_increment)
-        {
-            Vertex(th, ph);
-            Vertex(th, ph+sun_increment);
-        }
-        glEnd();
-    }
-    //  Undo transofrmations
-    glPopMatrix();
 }
 
 void Display(){
