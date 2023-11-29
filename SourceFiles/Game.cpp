@@ -136,19 +136,29 @@ void RenderMesh(){
         for(int col = 0; col < (num_x_vertices -1); col++){     // for each row, iterate through columns of x
             int curr = (col*dimensions) + (row*num_x_vertices*dimensions);
             //cout << "curr: " << curr << endl;
-            // Bottom triangle (blue)
+            // Bottom triangle
             glNormal3f(mesh_normals[0], mesh_normals[1], mesh_normals[2]);               // per face/primitive normal for now, smoother image may be developed with normal per vertex... (TODO)
             glBegin(GL_TRIANGLES);
-            glColor3f(0, (mesh_positions[curr+2]/2.0)+0.5, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
+            if(!mesh_positions[curr+2]){
+                glColor3f(0, 0, 0.502);
+            }
+            else{
+                glColor3f(0, 1, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
+            }
             glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
             glVertex3f(mesh_positions[curr+3],  mesh_positions[curr+4],  mesh_positions[curr+5]);
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glEnd();
 
-            // Top triangle (red)
+            // Top triangle
             glNormal3f(mesh_normals[3], mesh_normals[4], mesh_normals[5]);
             glBegin(GL_TRIANGLES);
-            glColor3f(0, (mesh_positions[curr+2]/2.0)+0.5, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
+            if(!mesh_positions[curr+2]){
+                glColor3f(0, 0, 0.502);
+            }
+            else{
+                glColor3f(0, 1, 0);           // green depth depends on z-value: green = f(z) = z/2 + 0.5
+            }
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glVertex3f(mesh_positions[top_left_index],  mesh_positions[top_left_index+1],  mesh_positions[top_left_index+2]);
             glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
@@ -165,7 +175,7 @@ vector<float> ProcessHeightmap(const char* img_path){
     // Load Heightmap
     int width, height, nChannels;
     unsigned char *data = stbi_load(img_path, &width, &height, &nChannels, 0);
-    cout << "Width: " << width << "   Height: " << height << "   nChannels: " << nChannels << endl;
+    //cout << "Width: " << width << "   Height: " << height << "   nChannels: " << nChannels << endl;
     
     // Generate Vertices based on color
     vector<float> z_vals;
@@ -416,11 +426,11 @@ void SpecialBindings(int key, int x, int y){
         else if (key == GLUT_KEY_F4)                { toggle_axes = 1 - toggle_axes; }          //  F4 - Toggle Axes
         else if (key == GLUT_KEY_F5)                { display_parameters = 1; }                 //  F5 - Display parameters once
         else if (key == GLUT_KEY_F6)                { SwitchMap(); }                            //  F6 - Switch Map
-        else if (key == GLUT_KEY_F6)                { sun_on = 1 - sun_on; }                    //  F7 - Turn sun (light) on/off
+        else if (key == GLUT_KEY_F7)                { sun_on = 1 - sun_on; }                    //  F7 - Turn sun (light) on/off
         else if (key == GLUT_KEY_RIGHT)             { azimuth += 5; }                           //  Right arrow key - increase angle by 5 degrees
         else if (key == GLUT_KEY_LEFT)              { azimuth -= 5; }                           //  Left arrow key - decrease angle by 5 degrees
-        else if (key == GLUT_KEY_UP)                { elevation -= 5; }                         //  Up arrow key - increase elevation by 5 degrees
-        else if (key == GLUT_KEY_DOWN)              { elevation += 5; }                         //  Down arrow key - decrease elevation by 5 degrees
+        else if (key == GLUT_KEY_UP)                { elevation += 5; }                         //  Up arrow key - increase elevation by 5 degrees
+        else if (key == GLUT_KEY_DOWN)              { elevation -= 5; }                         //  Down arrow key - decrease elevation by 5 degrees
         else if (key == GLUT_KEY_PAGE_DOWN)         { zoom += 0.1; }                            //  PageUp key - increase dim
         else if (key == GLUT_KEY_PAGE_UP && zoom>1) { zoom -= 0.1; }                            //  PageDown key - decrease dim
     }
