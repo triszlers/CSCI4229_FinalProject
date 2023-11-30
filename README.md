@@ -13,6 +13,7 @@
         * F5 - Display Parameters in terminal
         * F6 - Switch Map
         * F7 - Turn sun (light) on/off
+        * F8 - Switch between smooth/flat shading
         * Arrow Keys: Rotate around origin
         * Page up/down: Zoom in/out
         * A/a: Increase/decrease ambient light

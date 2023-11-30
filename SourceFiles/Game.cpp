@@ -8,7 +8,7 @@
 int azimuth = 0;                            // angle to x-axis
 int elevation = 0;                          // angle (up) to z-axis
 double zoom = 3;                            // dimension/zoom, distance from origin
-unsigned short int view_mode = 0;           // 0 - orthogonal, 1 - perspective, 2 = first person
+unsigned short int view_mode = 1;           // 0 - orthogonal, 1 - perspective, 2 = first person
 bool toggle_axes = true;
 double aspect_ratio = 1;                    // aspect ratio
 int field_of_view = 55;                     // field of view
@@ -39,8 +39,8 @@ int smooth = 1;                             // toggles smooth or flat shading
 const float start_x = -1;
 const float start_y = -1;
 const float stretch_x = 2;
-const float stretch_y = 2;
-const float step_size = 0.01;
+const float stretch_y = 2;                                      // spanning entire xy plane on [-1,1]
+const float step_size = 0.01;                                   // step is distance between each vertice
 const int num_x_vertices = (stretch_x/step_size) + 1;
 const int num_y_vertices = (stretch_y/step_size) + 1;
 const int dimensions = 3;
@@ -71,7 +71,7 @@ float z_vals_max;
 float num_segments;
 float segment_size;                 // segments specify where specific color changes occur (ex: mountain snow line)
 int maps_index = 0;
-int pixels;
+int num_pixels;
 
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
@@ -135,30 +135,36 @@ void GenMeshNormals(){
 void RenderMesh(){
     // Data now stored and ready, Render two different colored triangles for each square
     int normal_index = 0;
+
     for(int row = 0; row < (num_y_vertices - 1); row++){                // iterate through rows of y
         int top_left_index = num_x_vertices * dimensions * (row+1);           //init top left/right starting indice
         int top_right_index = top_left_index + dimensions;
+        
         for(int col = 0; col < (num_x_vertices -1); col++){     // for each row, iterate through columns of x
             int curr = (col*dimensions) + (row*num_x_vertices*dimensions);
-            //cout << "curr: " << curr << endl;
-            // Bottom triangle
-            glNormal3f(mesh_normals[0], mesh_normals[1], mesh_normals[2]);               // per face/primitive normal for now, smoother image may be developed with normal per vertex... (TODO)
-            glBegin(GL_TRIANGLES);
-            if(!mesh_positions[curr+2]){
-                glColor3f(0, 0, 0.502);             // zero values are set to blue (water/ocean)
+            float z_1 = mesh_positions[curr+2];         //frequently used from array, stored in variable for efficiency
+
+            // Determine colors based on z height
+            if(!z_1 && !mesh_positions[top_right_index+2]){      //check non-zero for bottomleft & top right to reduce chance of high blues
+                glColor3f(0, 0, cos(abs(mesh_positions[curr])) - 0.4);             // zero values are set to blue (water/ocean), depth of blue based on x
+                //-1.0*abs(mesh_positions[curr])/2.0 + 0.7
             }
             else{
-                if(mesh_positions[curr+2] >= segment_size*(num_segments-1)){        // topmost color segment
+                if(z_1 >= segment_size*(num_segments-1)){        // topmost color segment
                     glColor3f(1.000, 0.980, 0.980);                                 // white - snow
                 } 
-                else if(mesh_positions[curr+2] >= segment_size*(num_segments-2)){   // second down color segment
+                else if(z_1 >= segment_size*(num_segments-2)){   // second down color segment
                     glColor3f(0.439, 0.502, 0.565);                                 // grey - rocks
                 }
                 else{                                                               // everything else below
-                    glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);             // green depth depends on z-value: green = f(z) = z/z_values_max
+                    glColor3f(0, z_1/z_vals_max, 0);             // green depth depends on z-value: green = f(z) = z/z_values_max
                 }
             }
-            glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
+
+            // Bottom triangle
+            glNormal3f(mesh_normals[0], mesh_normals[1], mesh_normals[2]);               // per face/primitive normal for now, smoother image may be developed with normal per vertex... (TODO)
+            glBegin(GL_TRIANGLES);
+            glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  z_1);
             glVertex3f(mesh_positions[curr+3],  mesh_positions[curr+4],  mesh_positions[curr+5]);
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glEnd();
@@ -166,23 +172,9 @@ void RenderMesh(){
             // Top triangle
             glNormal3f(mesh_normals[3], mesh_normals[4], mesh_normals[5]);
             glBegin(GL_TRIANGLES);
-            if(!mesh_positions[curr+2]){
-                glColor3f(0, 0, 0.502);             // zero values are set to blue (water/ocean)
-            }
-            else{
-                if(mesh_positions[curr+2] >= segment_size*(num_segments-1)){        // topmost color segment
-                    glColor3f(1.000, 0.980, 0.980);                                 // white - snow
-                } 
-                else if(mesh_positions[curr+2] >= segment_size*(num_segments-2)){   // second down color segment
-                    glColor3f(0.439, 0.502, 0.565);                                 // grey - rocks
-                }
-                else{                                                               // everything else below
-                    glColor3f(0, mesh_positions[curr+2]/z_vals_max, 0);             // green depth depends on z-value: green = f(z) = z/z_values_max
-                }
-            }
             glVertex3f(mesh_positions[top_right_index],  mesh_positions[top_right_index+1],  mesh_positions[top_right_index+2]);
             glVertex3f(mesh_positions[top_left_index],  mesh_positions[top_left_index+1],  mesh_positions[top_left_index+2]);
-            glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  mesh_positions[curr+2]);
+            glVertex3f(mesh_positions[curr],  mesh_positions[curr+1],  z_1);
             glEnd();
 
             normal_index += 6;
@@ -192,12 +184,12 @@ void RenderMesh(){
     }
 }
 
-vector<float> ProcessHeightmap(const char* img_path){
+vector<float> ProcessHeightmap(const char* img_path, float map_multiplier){
     // Load Heightmap
     int width, height, nChannels;
     unsigned char *data = stbi_load(img_path, &width, &height, &nChannels, 0);
     //cout << "Width: " << width << "   Height: " << height << "   nChannels: " << nChannels << endl;
-    pixels = height;
+    num_pixels = height;
     // Generate Vertices based on color
     vector<float> z_vals;
     for(int y = 0; y < height; y++)
@@ -213,7 +205,7 @@ vector<float> ProcessHeightmap(const char* img_path){
     // Scale based on max/min, shift down by -0.5
     float max = *max_element(z_vals.begin(), z_vals.end());
     //float min = *min_element(z_vals.begin(), z_vals.end());
-    float z_scale = ((1.0/pixels)*10*3)/(max);
+    float z_scale = ((1.0/num_pixels)*10.0*map_multiplier)/(max);
     float z_shift = 0.0f;
     for(unsigned int z = 0; z < z_vals.size(); z++){
         //float scale = 1.0/(z_vals[z]/2.0);
@@ -285,8 +277,9 @@ void Display(){
         gluLookAt(Ex,Ey,Ez, 0,0,0, 0,0,Cos(elevation));         //(eye x, y, z, center x, y, z, up x, y, z)
     }
     else{   
+        //vec3 player_position = {0.0f, 0.0f, 0.0f};
         // First Person View
-        // TODO
+        //TODO
     }
 
     glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
@@ -449,6 +442,7 @@ void SpecialBindings(int key, int x, int y){
         else if (key == GLUT_KEY_F5)                { display_parameters = 1; }                 //  F5 - Display parameters once
         else if (key == GLUT_KEY_F6)                { SwitchMap(); }                            //  F6 - Switch Map
         else if (key == GLUT_KEY_F7)                { sun_on = 1 - sun_on; }                    //  F7 - Turn sun (light) on/off
+        else if (key == GLUT_KEY_F8)                { smooth = 1 - smooth; }                    //  F8 - Switch between smooth/flat shading
         else if (key == GLUT_KEY_RIGHT)             { azimuth += 5; }                           //  Right arrow key - increase angle by 5 degrees
         else if (key == GLUT_KEY_LEFT)              { azimuth -= 5; }                           //  Left arrow key - decrease angle by 5 degrees
         else if (key == GLUT_KEY_UP)                { elevation += 5; }                         //  Up arrow key - increase elevation by 5 degrees
@@ -520,29 +514,30 @@ void Init(){
     //map_type.push_back("snow");                    // white out, rocks (grey) scattered high --> may want to increase emission for purple/blue hue
 
     // Preprocess all maps for easy switching & add them to maps vector
-    ireland_zvals = ProcessHeightmap(ireland_heightmap);        
-    maps.push_back(ireland_zvals);
-    map_type.push_back("forest");                  // all green, darkness defined by depth, G = z/z_vals_max
-   
-    austrailia_zvals = ProcessHeightmap(austrailia_heightmap);
-    maps.push_back(austrailia_zvals);                                   // add vector to maps    
-    map_type.push_back("mixed");                   // phase desert & forest attributes over x or y
-
-    island_zvals = ProcessHeightmap(island_heightmap);
+    
+    island_zvals = ProcessHeightmap(island_heightmap, 3.0);
     maps.push_back(island_zvals);             
-    map_type.push_back("tundra");                  // autumn colors with snow capped mountains
+    map_type.push_back("mountains");                  // autumn colors with snow capped mountains
 
-    middleeast_zvals = ProcessHeightmap(middleeast_heightmap);          // may not be feasible heightmap
+    middleeast_zvals = ProcessHeightmap(middleeast_heightmap, 3.0);          // may not be feasible heightmap
     maps.push_back(middleeast_zvals);                       
     map_type.push_back("desert");                  // yellow-red spectrum defined by depth, R = z/z_vals_max
 
-    mountains_zvals = ProcessHeightmap(mountains_heightmap);
+    mountains_zvals = ProcessHeightmap(mountains_heightmap, 3.0);
     maps.push_back(mountains_zvals);     
-    map_type.push_back("mountain");                // same green depth as forest, rock and snow layer at higher z vals         
+    map_type.push_back("mountain");                // same green depth as forest, rock and snow layer at higher z vals       
 
-    sealine_zvals = ProcessHeightmap(sealine_heightmap);
+    sealine_zvals = ProcessHeightmap(sealine_heightmap, 3.0);
     maps.push_back(sealine_zvals);       
-    map_type.push_back("mountain");                // same green depth as forest, rock and snow layer at higher z vals                              
+    map_type.push_back("mountain");                // same green depth as forest, rock and snow layer at higher z vals   
+
+    ireland_zvals = ProcessHeightmap(ireland_heightmap, 3.0);        
+    maps.push_back(ireland_zvals);
+    map_type.push_back("forest");                  // all green, darkness defined by depth, G = z/z_vals_max
+
+    austrailia_zvals = ProcessHeightmap(austrailia_heightmap, 3.0);
+    maps.push_back(austrailia_zvals);                                   // add vector to maps    
+    map_type.push_back("mixed");                   // phase desert & forest attributes over x or y                         
 
     z_vals_max = *max_element(maps[maps_index].begin(), maps[maps_index].end());    //set max value for initial map
     num_segments = 5.0f;
