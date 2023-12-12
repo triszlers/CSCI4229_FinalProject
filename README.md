@@ -1,8 +1,10 @@
 ## Instructions
 * LAUNCH THE EXECUTABLE "Game.exe"
 * Compiling/Running:
-    * Compilation: > g++ -Wall -o Game SourceFiles/Game.cpp -lfreeglut -lglew32 -lglu32 -lopengl32 -lm
-    * Running: > ./Game
+    * Compilation:      > make
+    * Running:          > ./Game
+    * Clean:            > make clean
+
 * Controls:
     * Shared Controls (developer and player)
         * F1 - Toggle Developer Mode:
@@ -25,10 +27,14 @@
         * TODO
 
 ## Development Plans
-* Color Mountaintops 
-* Give different maps different 'uniforms' based on the environment there
-* Store max values in maps array for preprocessing speed, along with a 'multiplier' which specifies a specific max height multiple for that map
-* Set up mesh step size so that differently sized square images can be processed and rendered
+* Scale out erroneous (super large) z values, fix bug with "ProcessHeightmaps()"
+* Finish Implmenting First person view to navigate around scene
+* Sit first person view inside previously built airplane/cockpit
+* Add a skybox --> use color gradient or texture
+* Add clouds/weather, adjust emission lighting towards dawn
+* Add buildings/features for visual richness
+* Add scaliness to water.. possibly identify water z vals and apply moving sin wave to it. 
+* IF TIME PERMITS: Set up shadow mapping, water reflections, etc...
 
 ## Description/Notes
 * Abstraction hindered by some odd circular include errors... result is a large single file application
