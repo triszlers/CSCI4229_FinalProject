@@ -96,6 +96,7 @@ bool posx_to_negx = false;
 bool negx_to_posx = false;
 float bank_angle = 0;
 float yaw_angle = 0;
+float prev_yaw_angle = 0;
 bool turning = false;
 bool left_turn = false;
 bool right_turn = false;
@@ -763,47 +764,6 @@ void Display(void){
     glutSwapBuffers();                  // swaps the buffers of current window (if double buffered --> yes)
 }
 
-void TurnPlane(double time){
-    double turn_time = 5.0;
-    double end_time = time + turn_time;      //turn should take 5 seconds
-
-    double degrees_per_sec = 90.0/turn_time;
-    double prev_yaw_angle = yaw_angle;
-    // if(posy_to_negy){           // starting motion on each map
-        
-    // }
-    // else if(negy_to_posy){
-        
-    // }
-    // else if(posx_to_negx){
-        
-    // }
-    // else if(negx_to_posx){
-        
-    // }
-    
-    double curr_time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
-    while(end_time > curr_time){
-        if(left_turn){
-            yaw_angle += degrees_per_sec;
-        }
-        else if(right_turn){
-            yaw_angle -= degrees_per_sec;
-        }
-        
-
-
-        if(abs(prev_yaw_angle - yaw_angle) >= 90){
-            turning = false;
-            left_turn = false;
-            right_turn = false;
-            break;
-        }
-        curr_time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
-    }
-
-}
-
 void Reshape(int width, int height){
     aspect_ratio = ( height > 0) ? (double)width / height : 1;          //  Ratio of the width to the height of the window
     glViewport(0, 0, RES*width, RES*height);                            //  Set the viewport to the entire window
@@ -815,9 +775,25 @@ void Reshape(int width, int height){
 
 void Idle(void){
     double time = glutGet(GLUT_ELAPSED_TIME)/1000.0;    // gets time in seconds
-    
+
     if(turning){
-        TurnPlane(time);
+        if(abs(prev_yaw_angle - yaw_angle) <= 90){
+            if(left_turn){
+                //cout << "adjusting left, yaw angle: " << yaw_angle << endl;
+                yaw_angle += 1;
+            }
+            else if(right_turn){
+                //cout << "adjusting right" << endl;
+                yaw_angle -= 1;
+            }
+        }
+        else{
+            //cout << "Finished" << endl;
+            turning = false;
+            left_turn = false;
+            right_turn = false;
+            prev_yaw_angle = yaw_angle;
+        }
     }
 
     if(view_mode == 2){
@@ -1088,7 +1064,5 @@ int main() {
 
     //ErrCheck("main");
     glutMainLoop();
-
-    
 	return 0;
 }
