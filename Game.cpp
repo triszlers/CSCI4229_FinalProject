@@ -5,18 +5,18 @@
 //_________________________________________________________________________________________________________________________
 
 //-_-_-_-_-_-_-_Camera/View Attributes_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
-int azimuth = 0;                            // angle to x-axis
-int elevation = 0;                          // angle (up) to z-axis
-double zoom = 3;                            // dimension/zoom, distance from origin
-unsigned short int view_mode = 1;           // 0 - orthogonal, 1 - perspective, 2 = first person
+int azimuth;                                // angle to x-axis
+int elevation;                              // angle (up) to z-axis
+double zoom;                                // dimension/zoom, distance from origin
+unsigned short int view_mode;               // 0 - orthogonal, 1 - perspective, 2 = first person
 bool toggle_axes = true;
 double aspect_ratio = 1;                    // aspect ratio
-int field_of_view = 55;                     // field of view
-int developer_mode = 1;                     // controls differ if in developer mode --> set this to zero on release
+int field_of_view;                          // field of view
+int developer_mode = 0;                     // controls differ if in developer mode --> set this to zero on release
 int display_parameters = 0;                 // when pressed, current relevant parameters will be printed to console
-float Cx = 0.0;
+float Cx = 0.0;                             // used to control third person view centering, plane is always centered here
 float Cy = 0.0;
-float Cz = 0.3;                             // used to control third person view centering, plane is always centered here
+float Cz = 0.3;                             // fixed z at 0.3
 
 //-_-_-_-_-_-_-_Light Attributes_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 int sun_on = 1;                             // turn lighting on/off
@@ -29,12 +29,12 @@ double prev_time = 0;                       // used to stop/start sun from same 
 float sun_distance = 2.0f;                  // distance of sun from origin
 int sun_increment = 10;                     
 int sun_emission = 0;                       // Emission intensity (%)   ...purpleish, night vibe
-int sun_ambient = 10;                       // Ambient intensity (%)    
+int sun_ambient = 30;                       // Ambient intensity (%)    
 int sun_diffuse = 50;                       // Diffuse intensity (%)
 int sun_specular = 0;                       // Specular intensity (%)   ...yellowish, day vibe
 int sun_shininess = 0;                      // Shininess (power of two)
 float sun_shiny = 1;                        // Shininess (value)
-float sun_azimuth = 90.0f;                  // Light azimuth
+float sun_azimuth = 0.0f;                  // Light azimuth
 float sun_elevation = 0.0f;                 // Elevation of light
 int smooth = 1;                             // toggles smooth or flat shading
 
@@ -87,8 +87,13 @@ float player_ztrans = 0.0;
 float player_xrot = 0.0;
 float player_yrot = 0.0;
 float player_zrot = 0.0;
-double speed = 0.001;         //units per second
-bool half_flag = false;
+const double speed = 0.01;         //units per second
+bool start_flag = false;
+bool turn_flag = false;
+bool posy_to_negy = true;       //starting motion
+bool negy_to_posy = false;
+bool posx_to_negx = false;
+bool negx_to_posx = false;
 
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
@@ -636,7 +641,7 @@ void Display(void){
         double Ez = +2*zoom*Sin(elevation);
         //cout << "Ex: " << Ex << "   Ey: " << Ey << "   Ez: " << Ez << "   Cos(elevation): " << Cos(elevation) << endl;
         //We have the position of the reference point (middle x, y, z) to desired motion of the plane
-        gluLookAt(Ex,Ey,Ez, Cx,Cy,Cz, 0,0,Cos(elevation));         //(eye x, y, z, center x, y, z, up x, y, z)
+        gluLookAt(Cx+Ex,Cy+Ey,Cz+Ez, Cx,Cy,Cz, 0,0,Cos(elevation));         //(eye x, y, z, center x, y, z, up x, y, z)
     }
 
     glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
@@ -692,16 +697,23 @@ void Display(void){
     // Draw Calls Here
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
     glPushMatrix();
-    glTranslatef(Cx, Cy, Cz);       // In view mode 2, this plane is translated to the center of view
-    glScalef(0.01, 0.01, 0.01);
-    RenderPlane(0,0,0);             // Draw Piper Cub
+    if(!turn_flag){
+        //glRotatef(90, 1, 0, 0);
+        turn_flag = true;
+        glTranslatef(Cx, Cy, Cz);
+        glScalef(0.01, 0.01, 0.01);
+        RenderPlane(0,0,0);             // Draw Piper Cub
+    }
+    else{
+        glTranslatef(Cx, Cy, Cz);       // In view mode 2, this plane is translated to the center of view
+        glRotatef(45, 0, 1, 0);
+        glScalef(0.01, 0.01, 0.01);
+        RenderPlane(0,0,0);             // Draw Piper Cub
+    }
     glPopMatrix();
 
     RenderMesh();
-
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -759,10 +771,27 @@ void Reshape(int width, int height){
 
 void Idle(void){
     double time = glutGet(GLUT_ELAPSED_TIME)/1000.0;    // gets time in seconds
+    
     if(view_mode == 2){
-        //In third person, motion is set by plane attitude(s)
-        Cy = 0.01*time - 1;
+        if(posy_to_negy){           // starting motion on each map
+            if(!start_flag){
+                Cy = -speed*time + 1;
+            }
+            else{
+                Cy = -speed*time;
+            }
+        }
+        else if(negy_to_posy){
+            Cy = speed*time;
+        }
+        else if(posx_to_negx){
+            Cx = -speed*time;
+        }
+        else if(negx_to_posx){
+            Cx = speed*time;
+        }
     }
+
     // Allow sun to be stopped/started from same position with time continuing to run
     if(sun_paused && !time_flag){               
         prev_time = curr_time-sub_time;         // no change to sun_azimuth
@@ -774,7 +803,7 @@ void Idle(void){
             time_flag = false;
         }
         curr_time = time;
-        sun_azimuth = fmod(1*(curr_time-sub_time), 360.0);                     // multiple is how many degrees rotating per second
+        sun_azimuth = fmod(1*(curr_time-sub_time), 360.0) + 30.0;                     // multiple is how many degrees rotating per second
         glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
     }
 }
@@ -794,44 +823,40 @@ void SwitchMap(void){
 
 void SpecialBindings(int key, int x, int y){
     //Shared keybindings (player and developer mode)
-    if      (key == GLUT_KEY_F1)                { developer_mode = 1 - developer_mode; }    //  F1 - Toggle developer mode
+    if(key == GLUT_KEY_F1){                                                                           //  F1 - Toggle developer mode
+        if(!developer_mode){
+            developer_mode = 1;
+            view_mode = 1;
+        }
+        else{
+            developer_mode = 0;
+            view_mode = 2;
+        }
+    }                    
+    else if (key == GLUT_KEY_RIGHT)             { azimuth += 5; }                                           //  Right arrow key - increase angle by 5 degrees
+    else if (key == GLUT_KEY_LEFT)              { azimuth -= 5; }                                           //  Left arrow key - decrease angle by 5 degrees
+    else if (key == GLUT_KEY_UP)                { elevation += 5; }                                         //  Up arrow key - increase elevation by 5 degrees
+    else if (key == GLUT_KEY_DOWN)              { elevation -= 5; }                                         //  Down arrow key - decrease elevation by 5 degrees
     
     // Developer Mode Keybindings
     if(developer_mode){
-        if      (key == GLUT_KEY_F2)                { view_mode = 1 - view_mode; }              //  F2 - Change View Mode
-        else if (key == GLUT_KEY_F3)                { sun_paused = 1 - sun_paused; }            //  F3 - Pause motion of sun
-        else if (key == GLUT_KEY_F4)                { toggle_axes = 1 - toggle_axes; }          //  F4 - Toggle Axes
-        else if (key == GLUT_KEY_F5)                { display_parameters = 1; }                 //  F5 - Display parameters once
-        else if (key == GLUT_KEY_F6)                { SwitchMap(); }                            //  F6 - Switch Map
-        else if (key == GLUT_KEY_F7)                { sun_on = 1 - sun_on; }                    //  F7 - Turn sun (light) on/off
-        else if (key == GLUT_KEY_F8)                { smooth = 1 - smooth; }                    //  F8 - Switch between smooth/flat shading
-        else if (key == GLUT_KEY_RIGHT)             { azimuth += 5; }                           //  Right arrow key - increase angle by 5 degrees
-        else if (key == GLUT_KEY_LEFT)              { azimuth -= 5; }                           //  Left arrow key - decrease angle by 5 degrees
-        else if (key == GLUT_KEY_UP)                { elevation += 5; }                         //  Up arrow key - increase elevation by 5 degrees
-        else if (key == GLUT_KEY_DOWN)              { elevation -= 5; }                         //  Down arrow key - decrease elevation by 5 degrees
-        else if (key == GLUT_KEY_PAGE_DOWN)         { zoom += 0.1; }                            //  PageUp key - increase dim
-        else if (key == GLUT_KEY_PAGE_UP)           { zoom -= 0.1; }                            //  PageDown key - decrease dim
+        if(key == GLUT_KEY_F2){                                                               //  F2 - Change View Mode
+            view_mode = 1 - view_mode; 
+        }               
+        else if (key == GLUT_KEY_F3)                { sun_paused = 1 - sun_paused; }          //  F3 - Pause motion of sun
+        else if (key == GLUT_KEY_F4)                { toggle_axes = 1 - toggle_axes; }        //  F4 - Toggle Axes
+        else if (key == GLUT_KEY_F5)                { display_parameters = 1; }               //  F5 - Display parameters once
+        else if (key == GLUT_KEY_F6)                { SwitchMap(); }                          //  F6 - Switch Map
+        else if (key == GLUT_KEY_F7)                { sun_on = 1 - sun_on; }                  //  F7 - Turn sun (light) on/off
+        else if (key == GLUT_KEY_F8)                { smooth = 1 - smooth; }                  //  F8 - Switch between smooth/flat shading
+        else if (key == GLUT_KEY_PAGE_DOWN)         { zoom += 0.1; }                          //  PageUp key - increase dim
+        else if (key == GLUT_KEY_PAGE_UP)           { zoom -= 0.1; }                          //  PageDown key - decrease dim
     }
     // Player Mode Keybindings
     if(!developer_mode){
-        // if(key == GLUT_KEY_LEFT){          //  Right arrow key - increase angle by 5 degrees
-        //     if(player_zrot >= 360){
-        //         player_zrot = 5;
-        //     }
-        //     else{
-        //         player_zrot += 5; 
-        //     }
-        // }                           
-        // else if(key == GLUT_KEY_RIGHT){      //  Left arrow key - decrease angle by 5 degrees
-        //     if(player_zrot <= 0){
-        //         player_zrot = 355;
-        //     }
-        //     else{
-        //         player_zrot -= 5; 
-        //     }
-        // }                           
-        // else if (key == GLUT_KEY_UP)                { player_yrot += 5; }                         //  Up arrow key - increase elevation by 5 degrees
-        // else if (key == GLUT_KEY_DOWN)              { player_yrot -= 5; }                         //  Down arrow key - decrease elevation by 5 degrees
+        if      (key == GLUT_KEY_F2)                { sun_paused = 1 - sun_paused; }            //  F2 - Pause game
+        else if (key == GLUT_KEY_F3)                { SwitchMap(); }                            //  F3 - Switch Map
+        
     }
 
     azimuth %= 360;
@@ -864,60 +889,51 @@ void KeyboardBindings(unsigned char key, int x, int y){
     }
 
     // Player Mode Keybindings
-    if(!developer_mode){
-        double r = zoom*Cos(elevation);
-        cout << "r: " << r << endl;
-        if      (key=='w'){         player_ytrans += 0.1; }         
-        else if (key=='W'){         player_ytrans += 0.1; }  
-        else if (key=='a'){         player_xtrans -= 0.1; }         
-        else if (key=='A'){         player_xtrans -= 0.1; }
-        else if (key=='s'){         player_ytrans -= 0.1; }        
-        else if (key=='S'){         player_ytrans -= 0.1; }
-        else if (key=='d'){         player_xtrans += 0.1; }        
-        else if (key=='D'){         player_xtrans += 0.1; }
-        
-        else if (key=='q'){
-            if(player_zrot >= 360){
-                player_zrot = 5;
+    else if(!developer_mode){
+        // All turns are 90 degrees and determined by current axis position
+        if      (key=='a'){         // Turn Left
+            if(posy_to_negy){
+                posy_to_negy = false;
+                negx_to_posx = true;
             }
-            else{
-                player_zrot += 5; 
+            else if(negy_to_posy){
+                negy_to_posy = false;
+                posx_to_negx = true;
             }
-            player_xtrans = r*Sin(player_zrot);
-            //player_ytrans = r*Cos(player_zrot);
-        }        
-        else if (key=='Q'){
-            if(player_zrot >= 360){
-                player_zrot = 5;
+            else if(posx_to_negx){
+                posx_to_negx = false;
+                posy_to_negy = true;
             }
-            else{
-                player_zrot += 5; 
-            } 
-            player_xtrans = r*Sin(player_zrot);
-            //player_ytrans = r*Cos(player_zrot);
+            else if(negx_to_posx){
+                negx_to_posx = false;
+                negy_to_posy = true;
+            }
+        }             
+        else if (key=='A'){
+
         }
-        else if (key=='e'){
-            if(player_zrot <= 0){
-                player_zrot = 355;
+        else if (key=='d'){         // Turn Right
+            if(posy_to_negy){
+                posy_to_negy = false;
+                posx_to_negx = true;
             }
-            else{
-                player_zrot -= 5; 
-            } 
-            player_xtrans = r*Sin(player_zrot);
-            //player_ytrans = r*Cos(player_zrot);
+            else if(negy_to_posy){
+                negy_to_posy = false;
+                negx_to_posx = true;
+            }
+            else if(posx_to_negx){
+                posx_to_negx = false;
+                negy_to_posy = true;
+            }
+            else if(negx_to_posx){
+                negx_to_posx = false;
+                posy_to_negy = true;
+            }
         }        
-        else if (key=='E'){
-            if(player_zrot <= 0){
-                player_zrot = 355;
-            }
-            else{
-                player_zrot -= 5; 
-            } 
-            player_xtrans = r*Sin(player_zrot);
-            //player_ytrans = r*Cos(player_zrot);
+        else if (key=='D'){
+            
         }
     }
-    
     //  Reproject
     Project(view_mode ? field_of_view : 0, aspect_ratio, zoom);
     //  Tell GLUT it is necessary to redisplay the scene
@@ -931,12 +947,22 @@ void Fatal(const char* error_message){
 
 void Init(void){
     if(developer_mode){
-        view_mode = 2;
-        azimuth = 20;
-        elevation = 45;
-        zoom = 0.2;
-        field_of_view = 11;
+        view_mode = 1;
+        azimuth = 10;
+        elevation = 20;
+        zoom = 1;
+        field_of_view = 55;
         sun_on = 1;
+        toggle_axes = 1;
+    }
+    else{
+        view_mode = 2;
+        azimuth = 10;
+        elevation = 20;
+        zoom = 0.1;
+        field_of_view = 20;
+        sun_on = 1;
+        toggle_axes = 0;
     }
     //map_type.push_back("autumn");                  // oranges and yellows, function TODO
     //map_type.push_back("snow");                    // white out, rocks (grey) scattered high --> may want to increase emission for purple/blue hue
