@@ -15,7 +15,7 @@ int field_of_view;                          // field of view
 int developer_mode = 0;                     // controls differ if in developer mode --> set this to zero on release
 int display_parameters = 0;                 // when pressed, current relevant parameters will be printed to console
 float Cx = 0.0;                             // used to control third person view centering, plane is always centered here
-float Cy = 0.0;
+float Cy = 1.0;
 float Cz = 0.3;                             // fixed z at 0.3
 
 //-_-_-_-_-_-_-_Light Attributes_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
@@ -87,13 +87,19 @@ float player_ztrans = 0.0;
 float player_xrot = 0.0;
 float player_yrot = 0.0;
 float player_zrot = 0.0;
-const double speed = 0.01;         //units per second
+const double speed = 0.0002;         //units per second
 bool start_flag = false;
 bool turn_flag = false;
 bool posy_to_negy = true;       //starting motion
 bool negy_to_posy = false;
 bool posx_to_negx = false;
 bool negx_to_posx = false;
+float bank_angle = 0;
+float yaw_angle = 0;
+bool turning = false;
+bool left_turn = false;
+bool right_turn = false;
+vec3 turn_axis = vec3(0,0,0);
 
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
@@ -697,23 +703,20 @@ void Display(void){
     // Draw Calls Here
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
+    
     glPushMatrix();
-    if(!turn_flag){
-        //glRotatef(90, 1, 0, 0);
-        turn_flag = true;
-        glTranslatef(Cx, Cy, Cz);
-        glScalef(0.01, 0.01, 0.01);
-        RenderPlane(0,0,0);             // Draw Piper Cub
+    glTranslatef(Cx, Cy, Cz);               // In view mode 2, this plane is translated to the center of view
+    if(turning){
+        glRotatef(bank_angle, turn_axis[0], turn_axis[1], turn_axis[2]);         // Visual banking when turn is initiated
     }
-    else{
-        glTranslatef(Cx, Cy, Cz);       // In view mode 2, this plane is translated to the center of view
-        glRotatef(45, 0, 1, 0);
-        glScalef(0.01, 0.01, 0.01);
-        RenderPlane(0,0,0);             // Draw Piper Cub
-    }
+    glRotatef(yaw_angle, 0, 0, 1);         // Visual banking when turn is initiated
+    glRotatef(bank_angle, 0, 1, 0);
+    glScalef(0.01, 0.01, 0.01);
+    RenderPlane(0,0,0);                     // Draw Piper Cub
     glPopMatrix();
 
     RenderMesh();
+
     //++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -760,6 +763,47 @@ void Display(void){
     glutSwapBuffers();                  // swaps the buffers of current window (if double buffered --> yes)
 }
 
+void TurnPlane(double time){
+    double turn_time = 5.0;
+    double end_time = time + turn_time;      //turn should take 5 seconds
+
+    double degrees_per_sec = 90.0/turn_time;
+    double prev_yaw_angle = yaw_angle;
+    // if(posy_to_negy){           // starting motion on each map
+        
+    // }
+    // else if(negy_to_posy){
+        
+    // }
+    // else if(posx_to_negx){
+        
+    // }
+    // else if(negx_to_posx){
+        
+    // }
+    
+    double curr_time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
+    while(end_time > curr_time){
+        if(left_turn){
+            yaw_angle += degrees_per_sec;
+        }
+        else if(right_turn){
+            yaw_angle -= degrees_per_sec;
+        }
+        
+
+
+        if(abs(prev_yaw_angle - yaw_angle) >= 90){
+            turning = false;
+            left_turn = false;
+            right_turn = false;
+            break;
+        }
+        curr_time = glutGet(GLUT_ELAPSED_TIME)/1000.0;
+    }
+
+}
+
 void Reshape(int width, int height){
     aspect_ratio = ( height > 0) ? (double)width / height : 1;          //  Ratio of the width to the height of the window
     glViewport(0, 0, RES*width, RES*height);                            //  Set the viewport to the entire window
@@ -772,23 +816,22 @@ void Reshape(int width, int height){
 void Idle(void){
     double time = glutGet(GLUT_ELAPSED_TIME)/1000.0;    // gets time in seconds
     
+    if(turning){
+        TurnPlane(time);
+    }
+
     if(view_mode == 2){
         if(posy_to_negy){           // starting motion on each map
-            if(!start_flag){
-                Cy = -speed*time + 1;
-            }
-            else{
-                Cy = -speed*time;
-            }
+            Cy = Cy - speed;
         }
         else if(negy_to_posy){
-            Cy = speed*time;
+            Cy = Cy + speed;
         }
         else if(posx_to_negx){
-            Cx = -speed*time;
+            Cx = Cx - speed;
         }
         else if(negx_to_posx){
-            Cx = speed*time;
+            Cx = Cx + speed;
         }
     }
 
@@ -803,7 +846,7 @@ void Idle(void){
             time_flag = false;
         }
         curr_time = time;
-        sun_azimuth = fmod(1*(curr_time-sub_time), 360.0) + 30.0;                     // multiple is how many degrees rotating per second
+        sun_azimuth = fmod(1*(curr_time-sub_time), 360.0) + 30.0;                     // multiple is how many degrees rotating per second, addition is initial value
         glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
     }
 }
@@ -892,6 +935,8 @@ void KeyboardBindings(unsigned char key, int x, int y){
     else if(!developer_mode){
         // All turns are 90 degrees and determined by current axis position
         if      (key=='a'){         // Turn Left
+            left_turn = true;
+            turning = true;
             if(posy_to_negy){
                 posy_to_negy = false;
                 negx_to_posx = true;
@@ -913,6 +958,8 @@ void KeyboardBindings(unsigned char key, int x, int y){
 
         }
         else if (key=='d'){         // Turn Right
+            right_turn = true;
+            turning = true;
             if(posy_to_negy){
                 posy_to_negy = false;
                 posx_to_negx = true;
