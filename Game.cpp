@@ -62,6 +62,12 @@ const char* island_heightmap = "Resources/Images/island_heightmap.png";
 const char* middleeast_heightmap = "Resources/Images/middleeast_heightmap.png";
 const char* mountains_heightmap = "Resources/Images/mountains_heightmap.png";
 const char* sealine_heightmap = "Resources/Images/sealine_heightmap.png";
+float austrailia_heightmap_max;
+float ireland_heightmap_max;
+float island_heightmap_max;
+float middleeast_heightmap_max;
+float mountains_heightmap_max;
+float sealine_heightmap_max;
 vector<float> austrailia_zvals;
 vector<float> ireland_zvals;
 vector<float> island_zvals;
@@ -438,24 +444,49 @@ vector<float> ProcessHeightmap(const char* img_path){
     num_pixels = height;
     // Generate Vertices based on color
     vector<float> z_vals;
+    float max = 0;
     for(int y = 0; y < height; y++)
     {
         for(int x = 0; x < width; x++)
         {
             unsigned char* texel = data + (x + width * y) * nChannels;      // retrieve texel for (x, y) tex coord
             unsigned char z = texel[0];                                     // raw height at coordinate
+            if(z > max){
+                max = z;
+            }
             z_vals.push_back(z);                              // z vertex
         }
     }
 
     // Scale based on max/min, shift down by -0.5
-    float max = *max_element(z_vals.begin(), z_vals.end());
+    //float other_max = *max_element(z_vals.begin(), z_vals.end());       //requires std_bits library
+    //cout << "max: " << max << endl;
+    //cout << "other max: " << other_max << endl;
     //float min = *min_element(z_vals.begin(), z_vals.end());
     float z_scale = ((1.0/num_pixels)*10.0*map_multiplier)/(max);
     float z_shift = 0.0f;
     for(unsigned int z = 0; z < z_vals.size(); z++){
         //float scale = 1.0/(z_vals[z]/2.0);
         z_vals[z] = z_vals[z] * z_scale - z_shift;
+    }
+    max = max * z_scale - z_shift;
+    if(strcmp(img_path, "Resources/Images/austrailia_heightmap.png") == 0){
+        austrailia_heightmap_max = max;
+    }
+    else if(strcmp(img_path, "Resources/Images/ireland_heightmap.png") == 0){
+        ireland_heightmap_max = max;
+    }
+    else if(strcmp(img_path, "Resources/Images/island_heightmap.png") == 0){
+        island_heightmap_max = max;
+    }
+    else if(strcmp(img_path, "Resources/Images/middleeast_heightmap.png") == 0){
+        middleeast_heightmap_max = max;
+    }
+    else if(strcmp(img_path, "Resources/Images/mountains_heightmap.png") == 0){
+        mountains_heightmap_max = max;
+    }
+    else if(strcmp(img_path, "Resources/Images/sealine_heightmap.png") == 0){
+        sealine_heightmap_max = max;
     }
 
     stbi_image_free(data);  // free heightmap from memory
@@ -657,13 +688,25 @@ void Idle(void){
 
     if(turning){
         if(abs(prev_yaw_angle - yaw_angle) <= 90){
-            if(left_turn){
-                //cout << "adjusting left, yaw angle: " << yaw_angle << endl;
-                yaw_angle += 1;
+            if(abs(prev_yaw_angle - yaw_angle) <= 45){      // Begin bank
+                if(left_turn){
+                    yaw_angle += 1;
+                    bank_angle += 1;
+                }
+                else if(right_turn){
+                    yaw_angle -= 1;
+                    bank_angle -= 1;
+                }
             }
-            else if(right_turn){
-                //cout << "adjusting right" << endl;
-                yaw_angle -= 1;
+            else{                                           // Bank back
+                if(left_turn){
+                    yaw_angle += 1;
+                    bank_angle -= 1;
+                }
+                else if(right_turn){
+                    yaw_angle -= 1;
+                    bank_angle += 1;
+                }
             }
         }
         else{
@@ -672,6 +715,9 @@ void Idle(void){
             left_turn = false;
             right_turn = false;
             prev_yaw_angle = yaw_angle;
+            turn_axis[0] = 0;
+            turn_axis[1] = 0;
+            turn_axis[2] = 0;
         }
     }
 
@@ -701,7 +747,8 @@ void Idle(void){
             time_flag = false;
         }
         curr_time = time;
-        sun_azimuth = fmod(1*(curr_time-sub_time), 360.0) + 30.0;                     // multiple is how many degrees rotating per second, addition is initial value
+        sun_azimuth = fmod(0.5*(curr_time-sub_time), 360.0) + 30.0;                     // multiple is how many degrees rotating per second, addition is initial value
+        
         glutPostRedisplay();                // indicates current window needs redisplaying (change has occured)
     }
 }
@@ -716,7 +763,25 @@ void SwitchMap(void){
     // Generate Mesh Vertices as specified in globals
     GenMeshVertices(maps[maps_index]);      //maps_index specifies initial map (0)
     GenMeshNormals();
-    z_vals_max = *max_element(maps[maps_index].begin(), maps[maps_index].end());   //get max value for current map (for gradient coloring)
+    if(maps_index == 0){
+        z_vals_max = island_heightmap_max;
+    }
+    else if(maps_index == 1){
+        z_vals_max = mountains_heightmap_max;
+    }
+    else if(maps_index == 2){
+        z_vals_max = sealine_heightmap_max;
+    }
+    else if(maps_index == 3){
+        z_vals_max = austrailia_heightmap_max;
+    }
+    else if(maps_index == 4){
+        z_vals_max = ireland_heightmap_max;
+    }
+    else if(maps_index == 5){
+        z_vals_max = middleeast_heightmap_max;
+    }
+    //z_vals_max = *max_element(maps[maps_index].begin(), maps[maps_index].end());   //get max value for current map (for gradient coloring)
 }
 
 void SpecialBindings(int key, int x, int y){
@@ -795,18 +860,22 @@ void KeyboardBindings(unsigned char key, int x, int y){
                 turning = true;
                 if(posy_to_negy){
                     posy_to_negy = false;
+                    turn_axis[1] = 1;
                     negx_to_posx = true;
                 }
                 else if(negy_to_posy){
                     negy_to_posy = false;
+                    turn_axis[1] = 1;
                     posx_to_negx = true;
                 }
                 else if(posx_to_negx){
                     posx_to_negx = false;
+                    turn_axis[0] = 1;
                     posy_to_negy = true;
                 }
                 else if(negx_to_posx){
                     negx_to_posx = false;
+                    turn_axis[0] = 1;
                     negy_to_posy = true;
                 }
             }             
@@ -815,18 +884,22 @@ void KeyboardBindings(unsigned char key, int x, int y){
                 turning = true;
                 if(posy_to_negy){
                     posy_to_negy = false;
+                    turn_axis[1] = 1;
                     posx_to_negx = true;
                 }
                 else if(negy_to_posy){
                     negy_to_posy = false;
+                    turn_axis[1] = 1;
                     negx_to_posx = true;
                 }
                 else if(posx_to_negx){
                     posx_to_negx = false;
+                    turn_axis[0] = 1;
                     negy_to_posy = true;
                 }
                 else if(negx_to_posx){
                     negx_to_posx = false;
+                    turn_axis[0] = 1;
                     posy_to_negy = true;
                 }
             }        
@@ -897,7 +970,7 @@ void Init(void){
     maps.push_back(middleeast_zvals);                       
     map_type.push_back("desert");                  // yellow-red spectrum defined by depth, R = z/z_vals_max
 
-    z_vals_max = *max_element(maps[maps_index].begin(), maps[maps_index].end());    //set max value for initial map
+    z_vals_max = island_heightmap_max;    //set max value for initial map
     num_segments = 5.0f;
     segment_size = z_vals_max/num_segments;
 

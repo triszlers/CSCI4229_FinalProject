@@ -11,9 +11,9 @@ using namespace std;
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
-#ifndef __APPLE__
-#include <bits/stdc++.h> 
-#endif
+// #ifndef __APPLE__
+// #include <bits/stdc++.h> 
+// #endif
 
 #include "Dependencies/GLM/glm.hpp"
 #include "Dependencies/GLM/gtc/matrix_transform.hpp"
