@@ -106,32 +106,6 @@ vec3 turn_axis = vec3(0,0,0);
 //_________________________________________________________________________________________________________________________
 //_________________________________________________________________________________________________________________________
 
-static void Torus(float x, float y, float z, float S, float r){
-   int N=32; // Number of slices
-
-   glTranslated(x,y,z);
-   glScaled(S,S,S);
-
-   //  Loop along ring
-   glBegin(GL_QUADS);
-   for (int i=0;i<N;i++)
-   {
-      float th0 =  i   *360.0/N;
-      float th1 = (i+1)*360.0/N;
-      //  Loop around ring
-      for (int j=0;j<N;j++)
-      {
-         float ph0 =  j   *360.0/N;
-         float ph1 = (j+1)*360.0/N;
-         glNormal3d(Cos(th1)*Cos(ph0),-Sin(th1)*Cos(ph0),Sin(ph0)); glTexCoord2d(th1/30.0,ph0/180.0); glVertex3d(Cos(th1)*(1+r*Cos(ph0)),-Sin(th1)*(1+r*Cos(ph0)),r*Sin(ph0));
-         glNormal3d(Cos(th0)*Cos(ph0),-Sin(th0)*Cos(ph0),Sin(ph0)); glTexCoord2d(th0/30.0,ph0/180.0); glVertex3d(Cos(th0)*(1+r*Cos(ph0)),-Sin(th0)*(1+r*Cos(ph0)),r*Sin(ph0));
-         glNormal3d(Cos(th0)*Cos(ph1),-Sin(th0)*Cos(ph1),Sin(ph1)); glTexCoord2d(th0/30.0,ph1/180.0); glVertex3d(Cos(th0)*(1+r*Cos(ph1)),-Sin(th0)*(1+r*Cos(ph1)),r*Sin(ph1));
-         glNormal3d(Cos(th1)*Cos(ph1),-Sin(th1)*Cos(ph1),Sin(ph1)); glTexCoord2d(th1/30.0,ph1/180.0); glVertex3d(Cos(th1)*(1+r*Cos(ph1)),-Sin(th1)*(1+r*Cos(ph1)),r*Sin(ph1));
-      }
-   }
-   glEnd();
-}
-
 static void Cylinder(float x, float y, float z, float R, float H)
 {
    int N=32; // Number of slices
@@ -329,101 +303,6 @@ void Fuselage(float x, float y, float z, float fuselage_length, float wing_stret
     glEnd();
 
     glPopMatrix();
-}
-
-static void cube(double x,double y,double z, double dx,double dy,double dz, double th){
-    //  Set specular color to white
-    float white[] = {1,1,1,1};
-    float black[] = {0,0,0,1};
-    glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,sun_shiny);
-    glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
-    glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,black);
-    //  Offset, scale and rotate
-    glTranslated(x,y,z);
-    glScaled(dx,dy,dz);
-    //  Cube
-    glBegin(GL_QUADS);
-    //  Front
-    glColor3f(1,0,0);
-    glNormal3f( 0, 0, 1);
-    glVertex3f(-1,-1, 1);
-    glVertex3f(+1,-1, 1);
-    glVertex3f(+1,+1, 1);
-    glVertex3f(-1,+1, 1);
-    //  Back
-    glColor3f(0,0,1);
-    glNormal3f( 0, 0,-1);
-    glVertex3f(+1,-1,-1);
-    glVertex3f(-1,-1,-1);
-    glVertex3f(-1,+1,-1);
-    glVertex3f(+1,+1,-1);
-    //  Right
-    glColor3f(1,1,0);
-    glNormal3f(+1, 0, 0);
-    glVertex3f(+1,-1,+1);
-    glVertex3f(+1,-1,-1);
-    glVertex3f(+1,+1,-1);
-    glVertex3f(+1,+1,+1);
-    //  Left
-    glColor3f(0,1,0);
-    glNormal3f(-1, 0, 0);
-    glVertex3f(-1,-1,-1);
-    glVertex3f(-1,-1,+1);
-    glVertex3f(-1,+1,+1);
-    glVertex3f(-1,+1,-1);
-    //  Top
-    glColor3f(0,1,1);
-    glNormal3f( 0,+1, 0);
-    glVertex3f(-1,+1,+1);
-    glVertex3f(+1,+1,+1);
-    glVertex3f(+1,+1,-1);
-    glVertex3f(-1,+1,-1);
-    //  Bottom
-    glColor3f(1,0,1);
-    glNormal3f( 0,-1, 0);
-    glVertex3f(-1,-1,-1);
-    glVertex3f(+1,-1,-1);
-    glVertex3f(+1,-1,+1);
-    glVertex3f(-1,-1,+1);
-    //  End
-    glEnd();
-}
-
-static void Vertex(double th,double ph){
-   double x = Sin(th)*Cos(ph);
-   double y = Cos(th)*Cos(ph);
-   double z =         Sin(ph);
-   // Supporting function for sphere
-   glNormal3d(x,y,z);
-   glVertex3d(x,y,z);
-}
-
-static void ball(double x,double y,double z,double r){
-   //  Save transformation
-   glPushMatrix();
-   //  Offset, scale and rotate
-   glTranslated(x,y,z);
-   glScaled(r,r,r);
-   //  White ball with yellow specular
-   float yellow[]   = {1.0,1.0,0.0,1.0};
-   float Emission[] = {0.0,0.0,0.01*sun_emission,1.0};
-   glColor3f(1,1,1);
-   glMaterialf(GL_FRONT,GL_SHININESS,sun_shiny);
-   glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
-   glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
-   //  Bands of latitude
-   for (int ph=-90;ph<90;ph+=sun_increment)
-   {
-      glBegin(GL_QUAD_STRIP);
-      for (int th=0;th<=360;th+=2*sun_increment)
-      {
-         Vertex(th,ph);
-         Vertex(th,ph+sun_increment);
-      }
-      glEnd();
-   }
-   //  Undo transofrmations
-   glPopMatrix();
 }
 
 void RenderPlane(float x, float y, float z){
@@ -910,52 +789,48 @@ void KeyboardBindings(unsigned char key, int x, int y){
     // Player Mode Keybindings
     else if(!developer_mode){
         // All turns are 90 degrees and determined by current axis position
-        if      (key=='a'){         // Turn Left
-            left_turn = true;
-            turning = true;
-            if(posy_to_negy){
-                posy_to_negy = false;
-                negx_to_posx = true;
-            }
-            else if(negy_to_posy){
-                negy_to_posy = false;
-                posx_to_negx = true;
-            }
-            else if(posx_to_negx){
-                posx_to_negx = false;
-                posy_to_negy = true;
-            }
-            else if(negx_to_posx){
-                negx_to_posx = false;
-                negy_to_posy = true;
-            }
-        }             
-        else if (key=='A'){
-
-        }
-        else if (key=='d'){         // Turn Right
-            right_turn = true;
-            turning = true;
-            if(posy_to_negy){
-                posy_to_negy = false;
-                posx_to_negx = true;
-            }
-            else if(negy_to_posy){
-                negy_to_posy = false;
-                negx_to_posx = true;
-            }
-            else if(posx_to_negx){
-                posx_to_negx = false;
-                negy_to_posy = true;
-            }
-            else if(negx_to_posx){
-                negx_to_posx = false;
-                posy_to_negy = true;
-            }
-        }        
-        else if (key=='D'){
-            
-        }
+        if(!turning){
+            if      (key=='a' || key=='A'){         // Turn Left
+                left_turn = true;
+                turning = true;
+                if(posy_to_negy){
+                    posy_to_negy = false;
+                    negx_to_posx = true;
+                }
+                else if(negy_to_posy){
+                    negy_to_posy = false;
+                    posx_to_negx = true;
+                }
+                else if(posx_to_negx){
+                    posx_to_negx = false;
+                    posy_to_negy = true;
+                }
+                else if(negx_to_posx){
+                    negx_to_posx = false;
+                    negy_to_posy = true;
+                }
+            }             
+            else if (key=='d' || key=='D'){         // Turn Right
+                right_turn = true;
+                turning = true;
+                if(posy_to_negy){
+                    posy_to_negy = false;
+                    posx_to_negx = true;
+                }
+                else if(negy_to_posy){
+                    negy_to_posy = false;
+                    negx_to_posx = true;
+                }
+                else if(posx_to_negx){
+                    posx_to_negx = false;
+                    negy_to_posy = true;
+                }
+                else if(negx_to_posx){
+                    negx_to_posx = false;
+                    posy_to_negy = true;
+                }
+            }        
+        }   
     }
     //  Reproject
     Project(view_mode ? field_of_view : 0, aspect_ratio, zoom);

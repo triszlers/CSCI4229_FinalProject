@@ -1,5 +1,5 @@
 # Final Project
-EXE=Game
+EXE=final
 BIN=Bin
 
 # Main target
@@ -39,7 +39,7 @@ Import.a:Game.o
 	g++ -c $(CFLG)  $<
 
 #  Link
-Game:Game.o   Import.a
+final:Game.o   Import.a
 	g++ $(CFLG) -o $@ $^  $(LIBS)
 
 #  Clean

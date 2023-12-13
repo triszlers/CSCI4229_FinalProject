@@ -25,10 +25,9 @@ using namespace glm;
 //#define USEGLEW      // consider alternatives
 
 // GLEW _MUST_ be included first
-#ifdef USEGLEW
+//#ifdef USEGLEW
 //#include "Dependencies/GLEW/glew.h"    // depend only on local GLEW file
 #include <GL/glew.h>
-#endif
 //  Get all GL prototypes
 #define GL_GLEXT_PROTOTYPES
 //  Select SDL, SDL2, GLFW or GLUT
